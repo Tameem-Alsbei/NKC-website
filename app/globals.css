@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
+/*
+ * NKC design tokens.
+ * Deep green for trust and identity, warm cream surfaces, and a restrained
+ * gold accent. Text colors are chosen to meet WCAG AA on cream and white.
+ */
+@theme {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-heading), ui-serif, Georgia, serif;
+  --font-arabic: var(--font-arabic-face), "Noto Naskh Arabic", serif;
+
+  --color-pine-950: #0d261a;
+  --color-pine-900: #143826;
+  --color-pine-800: #1b4a33;
+  --color-pine-700: #235c41;
+  --color-pine-600: #2f7253;
+  --color-pine-200: #c9ded0;
+  --color-pine-100: #e2eee6;
+  --color-pine-50: #f0f6f2;
+
+  --color-cream-50: #fffcf5;
+  --color-cream-100: #faf4e6;
+  --color-cream-200: #f1e6cc;
+  --color-cream-300: #e6d5ae;
+
+  --color-gold-200: #f0dca8;
+  --color-gold-300: #e5c67c;
+  --color-gold-400: #d3a94a;
+  --color-gold-600: #a07a24;
+  --color-gold-800: #6b5113;
+
+  --color-ink-900: #1c231f;
+  --color-ink-700: #37423b;
+  --color-ink-600: #4b574f;
+  --color-ink-500: #5c6860;
+  --color-line: #e3d9c3;
+  --color-line-strong: #cbbd9c;
+
+  --color-danger-50: #fcefed;
+  --color-danger-200: #f0c2bc;
+  --color-danger-700: #a3302a;
+  --color-danger-800: #82241f;
+  --color-warning-50: #fdf6e1;
+  --color-warning-200: #efd99a;
+  --color-warning-800: #6b4f0b;
+  --color-info-50: #edf3f7;
+  --color-info-200: #c4d7e4;
+  --color-info-800: #234a63;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(20 56 38 / 0.06), 0 4px 16px -4px rgb(20 56 38 / 0.08);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --focus-ring: var(--color-pine-700);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* A visible, consistent keyboard focus indicator everywhere. */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Sections on deep green use a gold focus ring for contrast. */
+.on-dark {
+  --focus-ring: var(--color-gold-300);
+}
+
+::selection {
+  background: var(--color-gold-200);
+  color: var(--color-ink-900);
+}
+
+/* Subtle geometric pattern used behind hero sections. */
+.pattern-girih {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e5c67c' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M28 4l7 17 17 7-17 7-7 17-7-17-17-7 17-7z'/%3E%3Cpath d='M28 14l4 10 10 4-10 4-4 10-4-10-10-4 10-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
