@@ -69,11 +69,21 @@ create table if not exists public.school_years (
 create unique index if not exists school_years_single_current
   on public.school_years (is_current) where is_current;
 
-insert into public.school_years (label)
-select distinct btrim(school_year)
-from public.registrations
-where school_year is not null and btrim(school_year) <> ''
-on conflict (label) do nothing;
+-- Only on the first run: later runs no longer have the old text column.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'registrations' and column_name = 'school_year'
+  ) then
+    insert into public.school_years (label)
+    select distinct btrim(school_year)
+    from public.registrations
+    where school_year is not null and btrim(school_year) <> ''
+    on conflict (label) do nothing;
+  end if;
+end;
+$$;
 
 -- The app previously hard-coded 2026-2027 as the open registration year.
 insert into public.school_years (label) values ('2026-2027')
@@ -490,8 +500,20 @@ update public.payments set paid_at = created_at where paid_at is null;
 
 alter table public.payments
   alter column paid_at set not null,
-  alter column paid_at set default now(),
-  alter column amount type numeric(10, 2);
+  alter column paid_at set default now();
+
+-- Only on the first run: afterwards the dashboard views depend on this column.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'payments' and column_name = 'amount'
+      and (numeric_precision is distinct from 10 or numeric_scale is distinct from 2)
+  ) then
+    alter table public.payments alter column amount type numeric(10, 2);
+  end if;
+end;
+$$;
 
 select pg_temp.drop_foreign_keys('public.payments', 'registration_id');
 select pg_temp.drop_foreign_keys('public.payments', 'recorded_by');
