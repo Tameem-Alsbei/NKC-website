@@ -20,7 +20,9 @@
 -- -----------------------------------------------------------------------------
 -- Read models for the dashboard (security_invoker: the caller's RLS applies)
 -- -----------------------------------------------------------------------------
-create or replace view public.admin_registration_list
+-- Dropped first so this file can be re-run after later migrations widen the view.
+drop view if exists public.admin_registration_list;
+create view public.admin_registration_list
 with (security_invoker = true)
 as
 select

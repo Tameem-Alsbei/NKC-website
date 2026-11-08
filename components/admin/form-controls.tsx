@@ -81,7 +81,7 @@ export function FormCheckbox({
 }: { id: string; label: ReactNode; className?: string } & Omit<ComponentProps<"input">, "className" | "type">) {
   return (
     <label htmlFor={id} className={cn("flex cursor-pointer items-start gap-2.5 text-sm text-ink-900", className)}>
-      <input id={id} type="checkbox" {...props} className="mt-0.5 size-4 shrink-0 accent-pine-700" />
+      <input id={id} type="checkbox" {...props} className="mt-0.5 size-4 shrink-0 accent-brand-700" />
       <span>{label}</span>
     </label>
   );

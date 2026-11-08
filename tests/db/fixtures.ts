@@ -8,7 +8,10 @@ type StudentPayload = {
   dateOfBirth: string;
   grade: string;
   isReturning: boolean;
-  arabicLevel: string;
+  gender: string;
+  quranAbility: string;
+  quranNotes: string | null;
+  arabicLevel?: string;
   studiedArabicBefore: boolean;
   specialConsiderations: string | null;
 };
@@ -35,7 +38,9 @@ export function student(overrides: Partial<StudentPayload> = {}): StudentPayload
     dateOfBirth: "2017-04-12",
     grade: "3",
     isReturning: false,
-    arabicLevel: "beginner",
+    gender: "female",
+    quranAbility: "learning_letters",
+    quranNotes: null,
     studiedArabicBefore: false,
     specialConsiderations: null,
     ...overrides,

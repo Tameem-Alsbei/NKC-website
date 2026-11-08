@@ -1,33 +1,37 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Naskh_Arabic, Source_Sans_3, Source_Serif_4 } from "next/font/google";
-import { school } from "@/lib/config/school";
+import { Fredoka, Noto_Naskh_Arabic, Nunito } from "next/font/google";
+import { brandAssets, program } from "@/lib/config/program";
 import "./globals.css";
 
-const body = Source_Sans_3({ variable: "--font-body", subsets: ["latin"], display: "swap" });
-const heading = Source_Serif_4({ variable: "--font-heading", subsets: ["latin"], display: "swap" });
-const arabic = Noto_Naskh_Arabic({
-  variable: "--font-arabic-face",
-  subsets: ["arabic"],
-  weight: ["500", "700"],
-  display: "swap",
-});
+const body = Nunito({ variable: "--font-body", subsets: ["latin"], display: "swap" });
+const heading = Fredoka({ variable: "--font-heading", subsets: ["latin"], weight: ["500", "600", "700"], display: "swap" });
+const arabic = Noto_Naskh_Arabic({ variable: "--font-arabic-face", subsets: ["arabic"], weight: ["600"], display: "swap" });
+
+function siteUrl(): URL | undefined {
+  const url = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined);
+  return url ? new URL(url) : undefined;
+}
 
 export const metadata: Metadata = {
+  // Absolute URLs for social previews: NEXT_PUBLIC_SITE_URL, else the Vercel production domain.
+  metadataBase: siteUrl(),
   title: {
-    default: `${school.name} | ${school.tagline}`,
-    template: `%s | ${school.name}`,
+    default: `${program.name} | ${program.schedule.summary}`,
+    template: `%s | ${program.name}`,
   },
-  description: school.description,
-  applicationName: school.name,
+  description: program.description,
+  applicationName: program.name,
   openGraph: {
-    title: school.name,
-    description: school.description,
+    title: program.name,
+    description: program.description,
     type: "website",
+    siteName: program.name,
+    images: [{ url: brandAssets.logoPath, width: brandAssets.logo.width, height: brandAssets.logo.height, alt: brandAssets.logoAlt }],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#143826",
+  themeColor: "#0e386c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -36,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
-          className="sr-only z-50 rounded-md bg-pine-900 px-4 py-2 font-semibold text-cream-50 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          className="sr-only z-50 rounded-md bg-brand-800 px-4 py-2 font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         >
           Skip to main content
         </a>

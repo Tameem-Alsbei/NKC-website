@@ -1,14 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { acknowledgments } from "@/lib/config/school";
+import { acknowledgments } from "@/lib/config/program";
 import { REGISTRATION_STEPS, type RegistrationFormState, type RegistrationStepId } from "@/lib/registration/form-state";
 import {
-  ARABIC_LEVEL_LABELS,
+  GENDER_LABELS,
   GRADE_LABELS,
+  QURAN_ABILITY_LABELS,
   RELATIONSHIP_LABELS,
-  type ArabicLevel,
+  type Gender,
   type Grade,
+  type QuranAbility,
   type Relationship,
 } from "@/lib/registration/options";
 import { formatSchoolYear } from "@/lib/school-year-format";
@@ -36,13 +38,13 @@ function ReviewSection({
 }) {
   const stepTitle = REGISTRATION_STEPS.find((s) => s.id === step)?.title ?? title;
   return (
-    <section className="rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
+    <section className="rounded-[var(--radius-card)] border border-line bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-serif text-lg font-semibold text-pine-900">{title}</h3>
+        <h3 className="font-display text-lg font-semibold text-brand-800">{title}</h3>
         <button
           type="button"
           onClick={() => onEdit(step)}
-          className="rounded-md px-2 py-1 text-sm font-semibold text-pine-700 underline-offset-4 hover:underline"
+          className="rounded-md px-2 py-1 text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
         >
           Edit<span className="sr-only"> {stepTitle}</span>
         </button>
@@ -97,22 +99,26 @@ export function ReviewStep({
       </ReviewSection>
 
       {state.students.map((student, index) => (
-        <ReviewSection key={student.key} title={studentLabel(student, index)} step="students" onEdit={onEdit}>
+        <ReviewSection key={student.key} title={studentLabel(student, index)} step="children" onEdit={onEdit}>
           <dl className="divide-y divide-line">
             <Row label="Date of birth" value={formatDate(student.dateOfBirth)} />
+            <Row label="Boy or girl" value={student.gender ? GENDER_LABELS[student.gender as Gender] : "Not answered"} />
             <Row
               label={`Grade (${formatSchoolYear(schoolYear)})`}
               value={student.grade ? GRADE_LABELS[student.grade as Grade] : "Not provided"}
             />
             <Row
-              label="Student type"
-              value={student.isReturning === "yes" ? "Returning" : student.isReturning === "no" ? "New" : "Not answered"}
+              label="Noor Kids Club"
+              value={student.isReturning === "yes" ? "Returning student" : student.isReturning === "no" ? "New student" : "Not answered"}
             />
-            <Row label="Studied Arabic before" value={yesNo(student.studiedArabicBefore)} />
+            <Row label="Studied Arabic or Quran" value={yesNo(student.studiedArabicBefore)} />
             <Row
-              label="Arabic level"
-              value={student.arabicLevel ? ARABIC_LEVEL_LABELS[student.arabicLevel as ArabicLevel] : "Not provided"}
+              label="Quran reading"
+              value={student.quranAbility ? QURAN_ABILITY_LABELS[student.quranAbility as QuranAbility] : "Not answered"}
             />
+            {student.quranNotes.trim() && (
+              <Row label="Quran notes" value={<span className="whitespace-pre-line">{student.quranNotes.trim()}</span>} />
+            )}
             <Row
               label="Special considerations"
               value={
@@ -127,7 +133,7 @@ export function ReviewStep({
         </ReviewSection>
       ))}
 
-      <ReviewSection title="Emergency contact" step="care" onEdit={onEdit}>
+      <ReviewSection title="Emergency contact" step="additional" onEdit={onEdit}>
         <dl className="divide-y divide-line">
           <Row label="Name" value={orDash(emergency.name)} />
           <Row label="Phone" value={orDash(emergency.phone)} />
@@ -135,11 +141,11 @@ export function ReviewStep({
         </dl>
       </ReviewSection>
 
-      <ReviewSection title="Acknowledgments" step="consent" onEdit={onEdit}>
+      <ReviewSection title="Confirmations" step="additional" onEdit={onEdit}>
         <ul className="space-y-2">
           {acknowledgments.map((item) => (
             <li key={item.id} className="flex gap-2 text-sm text-ink-700">
-              <span aria-hidden="true" className={state.acknowledgments[item.id] ? "text-pine-700" : "text-danger-700"}>
+              <span aria-hidden="true" className={state.acknowledgments[item.id] ? "text-brand-700" : "text-danger-700"}>
                 {state.acknowledgments[item.id] ? "✓" : "✕"}
               </span>
               <span>

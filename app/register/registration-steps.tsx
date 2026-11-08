@@ -2,26 +2,17 @@
 
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { CheckboxField, ChoiceGroup, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { acknowledgments, type AcknowledgmentId } from "@/lib/config/program";
+import type { GuardianFormState, RegistrationFormState, StudentFormState } from "@/lib/registration/form-state";
 import {
-  CheckboxField,
-  ChoiceGroup,
-  SelectField,
-  TextAreaField,
-  TextField,
-} from "@/components/ui/fields";
-import { acknowledgments, type AcknowledgmentId } from "@/lib/config/school";
-import type {
-  GuardianFormState,
-  RegistrationFormState,
-  StudentFormState,
-} from "@/lib/registration/form-state";
-import {
-  ARABIC_LEVEL_DESCRIPTIONS,
-  ARABIC_LEVEL_LABELS,
-  ARABIC_LEVELS,
+  GENDER_LABELS,
+  GENDERS,
   GRADE_LABELS,
   GRADES,
   MAX_STUDENTS_PER_REGISTRATION,
+  QURAN_ABILITIES,
+  QURAN_ABILITY_LABELS,
   RELATIONSHIP_LABELS,
   RELATIONSHIPS,
   SPECIAL_CONSIDERATIONS_MAX_LENGTH,
@@ -47,7 +38,7 @@ export const fieldId = (path: string) => path.replaceAll(".", "-");
 
 export function studentLabel(student: StudentFormState, index: number): string {
   const name = [student.firstName.trim(), student.lastName.trim()].filter(Boolean).join(" ");
-  return name || `Student ${index + 1}`;
+  return name || `Child ${index + 1}`;
 }
 
 const relationshipOptions = RELATIONSHIPS.map((value) => ({ value, label: RELATIONSHIP_LABELS[value] }));
@@ -62,18 +53,43 @@ function todayIso() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
-function Panel({ title, description, action, children }: { title: string; description?: ReactNode; action?: ReactNode; children: ReactNode }) {
+function Panel({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className="rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
+    <section className="rounded-[var(--radius-card)] border border-line bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-serif text-xl font-semibold text-pine-900">{title}</h3>
+          <h3 className="font-display text-xl font-semibold text-brand-800">{title}</h3>
           {description && <p className="mt-1 text-sm leading-relaxed text-ink-500">{description}</p>}
         </div>
         {action}
       </div>
       {children}
     </section>
+  );
+}
+
+function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed border-brand-200 bg-brand-50/50 px-4 py-5 font-bold text-brand-700 transition-colors hover:border-brand-500 hover:bg-brand-50"
+    >
+      <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M10 4v12M4 10h12" />
+      </svg>
+      {children}
+    </button>
   );
 }
 
@@ -91,12 +107,13 @@ function GuardianFields({
   contactOptional?: boolean;
 }) {
   const path = (field: string) => `${prefix}.${field}`;
+  const primary = prefix === "primaryGuardian";
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       <TextField
         id={fieldId(path("firstName"))}
         label="First name"
-        autoComplete={prefix === "primaryGuardian" ? "given-name" : "off"}
+        autoComplete={primary ? "given-name" : "off"}
         value={guardian.firstName}
         onValueChange={(value) => onChange("firstName", value)}
         error={errors[path("firstName")]}
@@ -105,7 +122,7 @@ function GuardianFields({
       <TextField
         id={fieldId(path("lastName"))}
         label="Last name"
-        autoComplete={prefix === "primaryGuardian" ? "family-name" : "off"}
+        autoComplete={primary ? "family-name" : "off"}
         value={guardian.lastName}
         onValueChange={(value) => onChange("lastName", value)}
         error={errors[path("lastName")]}
@@ -113,7 +130,7 @@ function GuardianFields({
       />
       <SelectField
         id={fieldId(path("relationship"))}
-        label="Relationship to the student(s)"
+        label="Relationship to the child(ren)"
         value={guardian.relationship}
         onValueChange={(value) => onChange("relationship", value)}
         options={relationshipOptions}
@@ -125,9 +142,9 @@ function GuardianFields({
         label="Email"
         type="email"
         inputMode="email"
-        autoComplete={prefix === "primaryGuardian" ? "email" : "off"}
+        autoComplete={primary ? "email" : "off"}
         optional={contactOptional}
-        hint={prefix === "primaryGuardian" ? "We'll use this to contact you about your registration." : undefined}
+        hint={primary ? "We'll use this to contact you about your registration." : undefined}
         value={guardian.email}
         onValueChange={(value) => onChange("email", value)}
         error={errors[path("email")]}
@@ -138,9 +155,9 @@ function GuardianFields({
         label="Phone"
         type="tel"
         inputMode="tel"
-        autoComplete={prefix === "primaryGuardian" ? "tel" : "off"}
+        autoComplete={primary ? "tel" : "off"}
         optional={contactOptional}
-        hint={prefix === "primaryGuardian" ? "Include the area code." : undefined}
+        hint={primary ? "Include the area code." : undefined}
         value={guardian.phone}
         onValueChange={(value) => onChange("phone", value)}
         error={errors[path("phone")]}
@@ -155,8 +172,8 @@ export function FamilyStep({ form }: { form: FormApi }) {
   return (
     <div className="space-y-6">
       <Panel
-        title="Primary parent or guardian"
-        description="The main contact for the school. If you have registered before, please use the same email address."
+        title="Parent or guardian"
+        description="The main contact for Noor Kids Club. If you've registered before, please use the same email address."
       >
         <GuardianFields prefix="primaryGuardian" guardian={state.primaryGuardian} errors={errors} onChange={form.setPrimary} />
       </Panel>
@@ -164,7 +181,7 @@ export function FamilyStep({ form }: { form: FormApi }) {
       {state.hasSecondaryGuardian ? (
         <Panel
           title="Second parent or guardian"
-          description="Optional. Email and phone can be left blank if you share contact details."
+          description="Email and phone can be left blank if you share contact details."
           action={
             <Button variant="ghost" size="sm" onClick={() => form.setHasSecondary(false)}>
               Remove
@@ -180,28 +197,13 @@ export function FamilyStep({ form }: { form: FormApi }) {
           />
         </Panel>
       ) : (
-        <button
-          type="button"
-          onClick={() => form.setHasSecondary(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-white/60 px-4 py-5 font-semibold text-pine-800 transition-colors hover:border-pine-600 hover:bg-pine-50"
-        >
-          <PlusIcon />
-          Add a second parent or guardian (optional)
-        </button>
+        <AddButton onClick={() => form.setHasSecondary(true)}>Add a second parent or guardian (optional)</AddButton>
       )}
     </div>
   );
 }
 
-function PlusIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M10 4v12M4 10h12" />
-    </svg>
-  );
-}
-
-export function StudentsStep({ form }: { form: FormApi }) {
+export function ChildrenStep({ form, schoolYear }: { form: FormApi; schoolYear: string }) {
   const { state, errors } = form;
   const canAdd = state.students.length < MAX_STUDENTS_PER_REGISTRATION;
   return (
@@ -211,15 +213,10 @@ export function StudentsStep({ form }: { form: FormApi }) {
         return (
           <Panel
             key={student.key}
-            title={`Student ${index + 1}`}
+            title={state.students.length > 1 ? studentLabel(student, index) : "Your child"}
             action={
               state.students.length > 1 ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => form.removeStudent(index)}
-                  aria-label={`Remove ${studentLabel(student, index)}`}
-                >
+                <Button variant="ghost" size="sm" onClick={() => form.removeStudent(index)} aria-label={`Remove ${studentLabel(student, index)}`}>
                   Remove
                 </Button>
               ) : undefined
@@ -252,24 +249,51 @@ export function StudentsStep({ form }: { form: FormApi }) {
                 value={student.dateOfBirth}
                 onValueChange={(value) => form.setStudent(index, "dateOfBirth", value)}
                 error={errors[path("dateOfBirth")]}
-                fieldClassName="sm:col-span-1"
               />
+              <SelectField
+                id={fieldId(path("grade"))}
+                label={`School grade in ${formatSchoolYear(schoolYear)}`}
+                value={student.grade}
+                onValueChange={(value) => form.setStudent(index, "grade", value)}
+                options={gradeOptions}
+                placeholder="Select a grade"
+                error={errors[path("grade")]}
+              />
+              <div className="sm:col-span-2">
+                <ChoiceGroup
+                  id={fieldId(path("gender"))}
+                  name={`gender-${student.key}`}
+                  legend="Is your child a boy or a girl?"
+                  hint="We use this, along with age, to place children in their activity groups."
+                  options={GENDERS.map((value) => ({ value, label: GENDER_LABELS[value] }))}
+                  value={student.gender}
+                  onValueChange={(value) => form.setStudent(index, "gender", value)}
+                  error={errors[path("gender")]}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <ChoiceGroup
+                  id={fieldId(path("isReturning"))}
+                  name={`returning-${student.key}`}
+                  legend="Has this child attended Noor Kids Club before?"
+                  options={[
+                    { value: "no", label: "New to Noor Kids Club" },
+                    { value: "yes", label: "Returning student" },
+                  ]}
+                  value={student.isReturning}
+                  onValueChange={(value) => form.setStudent(index, "isReturning", value)}
+                  error={errors[path("isReturning")]}
+                />
+              </div>
             </div>
           </Panel>
         );
       })}
 
-      {errors["students"] && <p className="text-sm font-medium text-danger-700">{errors["students"]}</p>}
+      {errors["students"] && <p className="text-sm font-semibold text-danger-700">{errors["students"]}</p>}
 
       {canAdd ? (
-        <button
-          type="button"
-          onClick={form.addStudent}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-white/60 px-4 py-5 font-semibold text-pine-800 transition-colors hover:border-pine-600 hover:bg-pine-50"
-        >
-          <PlusIcon />
-          Add another child
-        </button>
+        <AddButton onClick={form.addStudent}>Add another child</AddButton>
       ) : (
         <p className="text-sm text-ink-500">
           You can register up to {MAX_STUDENTS_PER_REGISTRATION} children in one form. Please submit a second form for
@@ -280,7 +304,7 @@ export function StudentsStep({ form }: { form: FormApi }) {
   );
 }
 
-export function ArabicStep({ form }: { form: FormApi }) {
+export function BackgroundStep({ form }: { form: FormApi }) {
   const { state, errors } = form;
   return (
     <div className="space-y-6">
@@ -292,27 +316,32 @@ export function ArabicStep({ form }: { form: FormApi }) {
               <ChoiceGroup
                 id={fieldId(path("studiedArabicBefore"))}
                 name={`studied-${student.key}`}
-                legend="Has this student studied Arabic before?"
-                hint="At home, in another school, or in a program."
+                legend="Has your child studied Arabic or Quran before?"
+                hint="At home, at the masjid, or in another program."
                 options={yesNoOptions}
                 value={student.studiedArabicBefore}
                 onValueChange={(value) => form.setStudent(index, "studiedArabicBefore", value)}
                 error={errors[path("studiedArabicBefore")]}
               />
               <ChoiceGroup
-                id={fieldId(path("arabicLevel"))}
-                name={`level-${student.key}`}
-                legend="Current Arabic level"
-                hint="Choose the closest match. Teachers will confirm placement."
-                columns={3}
-                options={ARABIC_LEVELS.map((value) => ({
-                  value,
-                  label: ARABIC_LEVEL_LABELS[value],
-                  description: ARABIC_LEVEL_DESCRIPTIONS[value],
-                }))}
-                value={student.arabicLevel}
-                onValueChange={(value) => form.setStudent(index, "arabicLevel", value)}
-                error={errors[path("arabicLevel")]}
+                id={fieldId(path("quranAbility"))}
+                name={`ability-${student.key}`}
+                legend="Which best describes your child's Quran reading today?"
+                options={QURAN_ABILITIES.map((value) => ({ value, label: QURAN_ABILITY_LABELS[value] }))}
+                value={student.quranAbility}
+                onValueChange={(value) => form.setStudent(index, "quranAbility", value)}
+                error={errors[path("quranAbility")]}
+              />
+              <TextAreaField
+                id={fieldId(path("quranNotes"))}
+                label="Anything else about their Quran learning?"
+                optional
+                hint="For example, surahs they have memorized or a previous teacher or program."
+                value={student.quranNotes}
+                onValueChange={(value) => form.setStudent(index, "quranNotes", value)}
+                error={errors[path("quranNotes")]}
+                maxLength={1000}
+                rows={3}
               />
             </div>
           </Panel>
@@ -322,16 +351,16 @@ export function ArabicStep({ form }: { form: FormApi }) {
   );
 }
 
-export function CareStep({ form }: { form: FormApi }) {
+export function AdditionalStep({ form }: { form: FormApi }) {
   const { state, errors } = form;
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-pine-50 p-5 text-sm leading-relaxed text-pine-900 ring-1 ring-pine-100">
-        <p className="font-semibold">What to share here</p>
+      <div className="rounded-[var(--radius-card)] bg-brand-50 p-5 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-100">
+        <p className="font-bold">Health and care information</p>
         <p className="mt-1">
-          Tell us only what teachers need to know to keep your child safe and supported, such as allergies, medical
-          needs during class, or learning and accessibility support. You don&apos;t need to include diagnoses or medical
-          records. This information is visible only to authorized school administrators.
+          Please share only what our staff need to keep your child safe and supported, such as allergies, medical needs
+          during the program, or accessibility support. You don&apos;t need to include diagnoses or medical records. Only
+          approved program administrators can see this.
         </p>
       </div>
 
@@ -349,7 +378,7 @@ export function CareStep({ form }: { form: FormApi }) {
               error={errors[path]}
               maxLength={SPECIAL_CONSIDERATIONS_MAX_LENGTH}
               showCount
-              rows={4}
+              rows={3}
             />
           </Panel>
         );
@@ -379,7 +408,7 @@ export function CareStep({ form }: { form: FormApi }) {
           />
           <TextField
             id={fieldId("emergencyContact.relationship")}
-            label="Relationship to the student(s)"
+            label="Relationship to the child(ren)"
             optional
             hint="For example: aunt, neighbor, family friend."
             value={state.emergencyContact.relationship}
@@ -390,74 +419,21 @@ export function CareStep({ form }: { form: FormApi }) {
           />
         </div>
       </Panel>
-    </div>
-  );
-}
 
-export function EnrollmentStep({ form, schoolYear }: { form: FormApi; schoolYear: string }) {
-  const { state, errors } = form;
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 rounded-2xl border border-line bg-white px-5 py-4">
-        <span className="grid size-10 place-items-center rounded-xl bg-gold-200 font-serif font-semibold text-pine-900" aria-hidden="true">
-          {schoolYear.slice(2, 4)}
-        </span>
-        <div>
-          <p className="text-sm text-ink-500">Registering for</p>
-          <p className="font-serif text-lg font-semibold text-pine-900">{formatSchoolYear(schoolYear)} school year</p>
+      <Panel title="Please confirm" description="All of these are required to submit your registration.">
+        <div className="space-y-3">
+          {acknowledgments.map((item) => (
+            <CheckboxField
+              key={item.id}
+              id={fieldId(`acknowledgments.${item.id}`)}
+              checked={state.acknowledgments[item.id]}
+              onCheckedChange={(value) => form.setAcknowledgment(item.id, value)}
+              label={item.label}
+              error={errors[`acknowledgments.${item.id}`]}
+            />
+          ))}
         </div>
-      </div>
-
-      {state.students.map((student, index) => {
-        const path = (field: string) => `students.${index}.${field}`;
-        return (
-          <Panel key={student.key} title={studentLabel(student, index)}>
-            <div className="space-y-6">
-              <SelectField
-                id={fieldId(path("grade"))}
-                label={`Grade in regular school during ${formatSchoolYear(schoolYear)}`}
-                value={student.grade}
-                onValueChange={(value) => form.setStudent(index, "grade", value)}
-                options={gradeOptions}
-                placeholder="Select a grade"
-                error={errors[path("grade")]}
-              />
-              <ChoiceGroup
-                id={fieldId(path("isReturning"))}
-                name={`returning-${student.key}`}
-                legend="Is this student new or returning?"
-                options={[
-                  { value: "no", label: "New student", description: "First year with our school" },
-                  { value: "yes", label: "Returning student", description: "Attended in a previous year" },
-                ]}
-                value={student.isReturning}
-                onValueChange={(value) => form.setStudent(index, "isReturning", value)}
-                error={errors[path("isReturning")]}
-              />
-            </div>
-          </Panel>
-        );
-      })}
+      </Panel>
     </div>
-  );
-}
-
-export function ConsentStep({ form }: { form: FormApi }) {
-  const { state, errors } = form;
-  return (
-    <Panel title="Please confirm" description="All items are required to submit your registration.">
-      <div className="space-y-3">
-        {acknowledgments.map((item) => (
-          <CheckboxField
-            key={item.id}
-            id={fieldId(`acknowledgments.${item.id}`)}
-            checked={state.acknowledgments[item.id]}
-            onCheckedChange={(value) => form.setAcknowledgment(item.id, value)}
-            label={item.label}
-            error={errors[`acknowledgments.${item.id}`]}
-          />
-        ))}
-      </div>
-    </Panel>
   );
 }

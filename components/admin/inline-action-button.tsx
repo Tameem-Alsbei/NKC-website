@@ -32,7 +32,7 @@ export function InlineActionButton({
         }}
         className={cn(
           "rounded-md px-2 py-1 text-left text-sm font-semibold disabled:opacity-60",
-          tone === "danger" ? "text-danger-700 hover:bg-danger-50" : "text-pine-700 hover:bg-pine-50",
+          tone === "danger" ? "text-danger-700 hover:bg-danger-50" : "text-brand-700 hover:bg-brand-50",
         )}
       >
         {pending ? pendingLabel : label}

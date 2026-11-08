@@ -9,8 +9,8 @@ import { cn } from "./cn";
 export const inputClasses = (invalid?: boolean, className?: string) =>
   cn(
     "block w-full min-h-11 rounded-lg border bg-white px-3 py-2 text-base text-ink-900 shadow-sm transition-colors",
-    "placeholder:text-ink-500/70 hover:border-pine-600 focus-visible:border-pine-700",
-    "disabled:cursor-not-allowed disabled:bg-cream-100 disabled:text-ink-500",
+    "placeholder:text-ink-500/70 hover:border-brand-600 focus-visible:border-brand-700",
+    "disabled:cursor-not-allowed disabled:bg-mist-100 disabled:text-ink-500",
     invalid ? "border-danger-700 bg-danger-50/40" : "border-line-strong",
     className,
   );
@@ -262,10 +262,10 @@ export function ChoiceGroup({
                 "group flex cursor-pointer items-start gap-3 rounded-lg border bg-white px-3.5 py-3 transition-colors",
                 "has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus-ring)]",
                 checked
-                  ? "border-pine-700 bg-pine-50 ring-1 ring-pine-700"
+                  ? "border-brand-700 bg-brand-50 ring-1 ring-brand-700"
                   : error
-                    ? "border-danger-700 hover:border-pine-600"
-                    : "border-line-strong hover:border-pine-600",
+                    ? "border-danger-700 hover:border-brand-600"
+                    : "border-line-strong hover:border-brand-600",
               )}
             >
               <input
@@ -275,7 +275,7 @@ export function ChoiceGroup({
                 value={option.value}
                 checked={checked}
                 onChange={() => onValueChange(option.value)}
-                className="mt-1 size-4 shrink-0 accent-pine-700 focus-visible:outline-none"
+                className="mt-1 size-4 shrink-0 accent-brand-700 focus-visible:outline-none"
               />
               <span className="min-w-0">
                 <span className="block font-semibold text-ink-900">{option.label}</span>
@@ -314,7 +314,7 @@ export function CheckboxField({
         htmlFor={id}
         className={cn(
           "flex cursor-pointer items-start gap-3 rounded-lg border bg-white px-4 py-3.5 transition-colors",
-          checked ? "border-pine-700 bg-pine-50" : error ? "border-danger-700" : "border-line-strong hover:border-pine-600",
+          checked ? "border-brand-700 bg-brand-50" : error ? "border-danger-700" : "border-line-strong hover:border-brand-600",
         )}
       >
         <input
@@ -324,7 +324,7 @@ export function CheckboxField({
           onChange={(event) => onCheckedChange(event.target.checked)}
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId}
-          className="mt-0.5 size-5 shrink-0 accent-pine-700"
+          className="mt-0.5 size-5 shrink-0 accent-brand-700"
         />
         <span className="text-[0.95rem] leading-relaxed text-ink-900">{label}</span>
       </label>

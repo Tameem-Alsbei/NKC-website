@@ -29,7 +29,9 @@ const PRIVATE_TABLES = [
   "registration_rate_limits",
   "admin_registration_list",
   "admin_family_list",
-  "admin_group_overview",
+  "teachers",
+  "quran_assignments",
+  "color_group_assignments",
 ];
 
 let db: PGlite;
@@ -326,7 +328,8 @@ describe("dashboard stats", () => {
     expect(stats.rows[0].s).toMatchObject({
       totalRegistrations: 1,
       newStudents: 1,
-      unassigned: 1,
+      unassignedColorGroup: 1,
+      unassignedQuranLevel: 1,
       byStatus: { pending: 1 },
       byPaymentStatus: { not_paid: 1 },
     });

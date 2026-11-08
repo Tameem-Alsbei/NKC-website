@@ -14,7 +14,13 @@ const TABLE_LABELS: Record<string, string> = {
   student_parents: "guardian link",
   student_health_notes: "special considerations",
   school_years: "school year",
-  groups: "group",
+  groups: "legacy group",
+  color_groups: "color group",
+  color_group_assignments: "color group placement",
+  teachers: "Quran teacher",
+  teacher_quran_levels: "teacher level",
+  quran_assignments: "Quran assignment",
+  program_themes: "program theme",
   registrations: "registration",
   student_group_assignments: "group assignment",
   payments: "payment",
@@ -34,6 +40,16 @@ const FIELD_LABELS: Record<string, string> = {
   payment_status: "payment status",
   payment_note: "payment note",
   group_id: "group",
+  color_group_id: "color group",
+  quran_level_id: "Quran level",
+  teacher_id: "teacher",
+  ended_on: "end date",
+  min_age: "youngest age",
+  max_age: "oldest age",
+  main_value: "main value",
+  is_active: "active",
+  full_name: "name",
+  gender: "boy/girl",
   special_considerations: "special considerations",
   emergency_contact_name: "emergency contact",
   emergency_contact_phone: "emergency phone",
@@ -69,7 +85,7 @@ export function describeAuditEntry(entry: AuditEntry): string {
 
   const parts = fields.slice(0, 4).map((field) => {
     const label = FIELD_LABELS[field] ?? field.replaceAll("_", " ");
-    if (["status", "payment_status", "grade", "amount_due", "is_returning", "needs_review"].includes(field)) {
+    if (["status", "payment_status", "grade", "amount_due", "is_returning", "needs_review", "quran_level_id", "is_active"].includes(field)) {
       return `${label}: ${display(field, valueOf(entry.old_values, field))} → ${display(field, valueOf(entry.new_values, field))}`;
     }
     return label;

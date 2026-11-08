@@ -1,13 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveSchoolYear } from "@/lib/admin/data";
-import { applyStudentFilters, parseStudentFilters, SORT_COLUMNS } from "@/lib/admin/student-filters";
+import { applyStudentFilters, orderForSort, parseStudentFilters } from "@/lib/admin/student-filters";
 import { getAuthorizedAdmin } from "@/lib/auth/admin";
 import { toCsv } from "@/lib/csv";
 import { ageFromDateOfBirth, labelFor } from "@/lib/format";
 import {
-  ARABIC_LEVEL_LABELS,
+  formatQuranLevel,
+  GENDER_LABELS,
   GRADE_LABELS,
   PAYMENT_STATUS_LABELS,
+  QURAN_ABILITY_LABELS,
   REGISTRATION_STATUS_LABELS,
 } from "@/lib/registration/options";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -21,16 +23,18 @@ const HEADERS = [
   "Student first name",
   "Date of birth",
   "Age",
-  "Grade",
-  "Arabic level",
-  "Studied Arabic before",
+  "Boy/girl",
+  "School grade",
   "New or returning",
+  "Color group",
+  "Quran level",
+  "Quran teacher",
+  "Parent-reported Quran reading",
   "Registration status",
   "Needs review",
   "Payment status",
   "Amount due",
   "Amount paid",
-  "Group",
   "Guardian name",
   "Guardian email",
   "Guardian phone",
@@ -38,9 +42,9 @@ const HEADERS = [
 ] as const;
 
 /**
- * CSV export of the filtered students list (same filters as /admin/students).
- * Deliberately excludes health / special-consideration notes; those are never
- * part of a routine export.
+ * CSV export of the filtered students list (same filters as /admin/students),
+ * also used for color-group and teacher rosters. Health and special-
+ * consideration notes are never part of an export.
  */
 export async function GET(request: NextRequest) {
   const admin = await getAuthorizedAdmin();
@@ -55,14 +59,12 @@ export async function GET(request: NextRequest) {
     supabase
       .from("admin_registration_list")
       .select(
-        "reference_code, school_year, student_last_name, student_first_name, date_of_birth, grade, arabic_level, studied_arabic_before, is_returning, status, needs_review, payment_status, amount_due, amount_paid, group_name, guardian_first_name, guardian_last_name, guardian_email, guardian_phone, registered_at",
+        "reference_code, school_year, student_last_name, student_first_name, date_of_birth, gender, grade, is_returning, color_group_name, quran_level_id, quran_level_name, teacher_name, reported_quran_ability, status, needs_review, payment_status, amount_due, amount_paid, guardian_first_name, guardian_last_name, guardian_email, guardian_phone, registered_at",
       ),
     filters,
     year.id,
   );
-  for (const column of SORT_COLUMNS[filters.sort]) {
-    query = query.order(column, { ascending: filters.dir === "asc", nullsFirst: false });
-  }
+  for (const { column, ascending } of orderForSort(filters)) query = query.order(column, { ascending, nullsFirst: false });
 
   const { data, error } = await query.limit(MAX_EXPORT_ROWS);
   if (error) {
@@ -77,23 +79,25 @@ export async function GET(request: NextRequest) {
     row.student_first_name,
     row.date_of_birth,
     ageFromDateOfBirth(row.date_of_birth),
+    row.gender ? labelFor(GENDER_LABELS, row.gender) : "",
     labelFor(GRADE_LABELS, row.grade),
-    row.arabic_level ? labelFor(ARABIC_LEVEL_LABELS, row.arabic_level) : "",
-    row.studied_arabic_before === null ? "" : row.studied_arabic_before ? "Yes" : "No",
     row.is_returning ? "Returning" : "New",
+    row.color_group_name ?? "",
+    row.quran_level_id ? formatQuranLevel(row.quran_level_id, row.quran_level_name) : "",
+    row.teacher_name ?? "",
+    row.reported_quran_ability ? labelFor(QURAN_ABILITY_LABELS, row.reported_quran_ability) : "",
     labelFor(REGISTRATION_STATUS_LABELS, row.status),
     row.needs_review ? "Yes" : "No",
     labelFor(PAYMENT_STATUS_LABELS, row.payment_status),
     row.amount_due ?? "",
     row.amount_paid,
-    row.group_name ?? "",
     [row.guardian_first_name, row.guardian_last_name].filter(Boolean).join(" "),
     row.guardian_email ?? "",
     row.guardian_phone ?? "",
     row.registered_at.slice(0, 10),
   ]);
 
-  const filename = `students-${year.label}-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `noor-kids-club-students-${year.label}-${new Date().toISOString().slice(0, 10)}.csv`;
   return new NextResponse(toCsv(HEADERS, rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

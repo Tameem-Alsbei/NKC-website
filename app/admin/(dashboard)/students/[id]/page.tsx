@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ColorGroupForm, QuranAssignmentForm } from "@/components/admin/assignment-forms";
+import { ColorGroupLabel } from "@/components/admin/color-group-label";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DetailItem, PageHeader } from "@/components/admin/layout-parts";
 import { NeedsReviewBadge, PaymentStatusBadge, RegistrationStatusBadge } from "@/components/admin/status-badges";
@@ -8,13 +10,16 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { describeAuditEntry } from "@/lib/admin/audit";
-import { getAdminNames, getGroupOptions } from "@/lib/admin/data";
+import { setColorGroup, setQuranAssignment } from "@/lib/admin/assignment-actions";
+import { getAdminNames, getColorGroups, getQuranLevels, getTeachers } from "@/lib/admin/data";
 import { canManageSensitiveRecords, canViewHealthNotes } from "@/lib/auth/access";
 import { requireAdmin } from "@/lib/auth/admin";
 import type { Json } from "@/lib/database.types";
 import { ageFromDateOfBirth, formatDate, formatDateTime, formatMoney, fullName, labelFor } from "@/lib/format";
 import {
-  ARABIC_LEVEL_LABELS,
+  formatQuranLevel,
+  GENDER_LABELS,
+  QURAN_ABILITY_LABELS,
   GRADE_LABELS,
   PAYMENT_METHOD_LABELS,
   RELATIONSHIP_LABELS,
@@ -24,7 +29,6 @@ import { formatSchoolYear } from "@/lib/school-year-format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   addAdminNote,
-  assignGroup,
   deleteAdminNote,
   deletePayment,
   recordPayment,
@@ -35,7 +39,6 @@ import {
 } from "./actions";
 import {
   AddNoteForm,
-  GroupForm,
   HealthNoteForm,
   PaymentSettingsForm,
   ProfileForm,
@@ -63,10 +66,10 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
   const showHealth = canViewHealthNotes(admin);
 
   const supabase = await createSupabaseServerClient();
-  const [studentRes, guardiansRes, registrationsRes, listRes, notesRes, healthRes] = await Promise.all([
+  const [studentRes, guardiansRes, registrationsRes, listRes, notesRes, healthRes, quranHistoryRes] = await Promise.all([
     supabase
       .from("students")
-      .select("id, household_id, first_name, last_name, date_of_birth, grade, arabic_level, studied_arabic_before, created_at, updated_at")
+      .select("id, household_id, first_name, last_name, date_of_birth, gender, grade, arabic_level, studied_arabic_before, created_at, updated_at")
       .eq("id", studentId)
       .maybeSingle(),
     supabase
@@ -77,11 +80,14 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
     supabase
       .from("registrations")
       .select(
-        "id, school_year_id, reference_code, grade, status, is_returning, needs_review, review_reasons, acknowledged_at, amount_due, payment_status, payment_note, registered_at, status_changed_at, status_changed_by, updated_at, submission_id, school_years(label)",
+        "id, school_year_id, reference_code, grade, status, is_returning, needs_review, review_reasons, acknowledged_at, amount_due, payment_status, payment_note, registered_at, status_changed_at, status_changed_by, updated_at, submission_id, reported_quran_ability, quran_background_notes, school_years(label)",
       )
       .eq("student_id", studentId)
       .order("registered_at", { ascending: false }),
-    supabase.from("admin_registration_list").select("registration_id, group_id, group_name, amount_paid").eq("student_id", studentId),
+    supabase
+      .from("admin_registration_list")
+      .select("registration_id, amount_paid, color_group_id, color_group_name, color_group_color, quran_level_id, quran_level_name, teacher_id, teacher_name")
+      .eq("student_id", studentId),
     supabase
       .from("admin_notes")
       .select("id, body, author_id, registration_id, created_at")
@@ -90,9 +96,14 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
     showHealth
       ? supabase.from("student_health_notes").select("special_considerations, updated_at, updated_by").eq("student_id", studentId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("quran_assignments")
+      .select("id, school_year_id, quran_level_id, teacher_id, status, started_on, ended_on, note, created_by, quran_levels(name), teachers(full_name), school_years(label)")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false }),
   ]);
 
-  if (studentRes.error || guardiansRes.error || registrationsRes.error || listRes.error || notesRes.error || healthRes.error) {
+  if (quranHistoryRes.error || studentRes.error || guardiansRes.error || registrationsRes.error || listRes.error || notesRes.error || healthRes.error) {
     throw new Error("Could not load student");
   }
   const student = studentRes.data;
@@ -106,11 +117,14 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
   const auditFilter = [
     `and(table_name.in.(students,student_health_notes),record_id.eq.${studentId})`,
     ...(registrationIds.length > 0
-      ? [`and(table_name.in.(registrations,student_group_assignments),record_id.in.(${registrationIds.join(",")}))`]
+      ? [`and(table_name.in.(registrations,color_group_assignments),record_id.in.(${registrationIds.join(",")}))`]
+      : []),
+    ...(quranHistoryRes.data.length > 0
+      ? [`and(table_name.eq.quran_assignments,record_id.in.(${quranHistoryRes.data.map((q) => q.id).join(",")}))`]
       : []),
   ].join(",");
 
-  const [paymentsRes, submissionsRes, householdRes, auditRes, groups, adminNames] = await Promise.all([
+  const [paymentsRes, submissionsRes, householdRes, auditRes, colorGroups, quranLevels, teachers, adminNames] = await Promise.all([
     registrationIds.length
       ? supabase
           .from("payments")
@@ -134,7 +148,9 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
       .or(auditFilter)
       .order("created_at", { ascending: false })
       .limit(25),
-    getGroupOptions([...new Set(registrations.map((r) => r.school_year_id))]),
+    getColorGroups(),
+    getQuranLevels(),
+    getTeachers(),
     getAdminNames(),
   ]);
 
@@ -144,6 +160,9 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
   const audit = auditRes.data ?? [];
   const nameOf = (userId: string | null) => (userId ? (adminNames.get(userId) ?? "Former administrator") : "System");
   const today = new Date().toISOString().slice(0, 10);
+  const quranHistory = quranHistoryRes.data;
+  const activeColorGroups = colorGroups.filter((group) => group.is_active).map((group) => ({ id: group.id, name: group.name }));
+  const teacherOptions = teachers.map((teacher) => ({ id: teacher.id, name: teacher.name, levelIds: teacher.levelIds, isActive: teacher.isActive }));
   const studentName = fullName(student.first_name, student.last_name);
 
   return (
@@ -154,8 +173,8 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span>
-              {labelFor(GRADE_LABELS, student.grade)} · Age {ageFromDateOfBirth(student.date_of_birth)} ·{" "}
-              {labelFor(ARABIC_LEVEL_LABELS, student.arabic_level)}
+              Age {ageFromDateOfBirth(student.date_of_birth)} · {student.gender ? GENDER_LABELS[student.gender] : "Boy/girl not recorded"} ·{" "}
+              {labelFor(GRADE_LABELS, student.grade)}
             </span>
             {registrations.some((r) => r.needs_review) && <NeedsReviewBadge />}
           </span>
@@ -170,7 +189,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
           )}
           {registrations.map((registration) => {
             const list = listById.get(registration.id);
-            const yearGroups = groups.filter((g) => g.schoolYearId === registration.school_year_id);
+            const isActiveRegistration = !["withdrawn", "rejected"].includes(registration.status);
             const regPayments = payments.filter((p) => p.registration_id === registration.id);
             const submitted = registration.submission_id ? submissions.get(registration.submission_id) : undefined;
             const yearLabel = registration.school_years?.label ?? "";
@@ -235,10 +254,16 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                     </Alert>
                   )}
 
-                  <dl className="grid grid-cols-2 gap-x-6 sm:grid-cols-4">
+                  <dl className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
                     <DetailItem label="Grade">{labelFor(GRADE_LABELS, registration.grade)}</DetailItem>
                     <DetailItem label="Type">{registration.is_returning ? "Returning" : "New"}</DetailItem>
-                    <DetailItem label="Group">{list?.group_name ?? "Not assigned"}</DetailItem>
+                    <DetailItem label="Color group">
+                      <ColorGroupLabel name={list?.color_group_name} color={list?.color_group_color} />
+                    </DetailItem>
+                    <DetailItem label="Quran">
+                      {list?.quran_level_id ? formatQuranLevel(list.quran_level_id, list.quran_level_name) : "Not assigned"}
+                      {list?.quran_level_id && <span className="block text-sm text-ink-600">{list.teacher_name ?? "No teacher yet"}</span>}
+                    </DetailItem>
                     <DetailItem label="Status changed">
                       {registration.status_changed_at
                         ? `${formatDateTime(registration.status_changed_at)} by ${nameOf(registration.status_changed_by)}`
@@ -253,17 +278,63 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                     <RegistrationForm action={updateRegistration.bind(null, student.id, registration.id)} registration={registration} />
                   </section>
 
-                  <section aria-labelledby={`reg-group-${registration.id}`} className="border-t border-line pt-5">
-                    <h3 id={`reg-group-${registration.id}`} className="mb-3 font-semibold text-ink-900">
-                      Group placement
+                  <section aria-labelledby={`reg-background-${registration.id}`} className="rounded-xl bg-mist-50 p-4 ring-1 ring-line">
+                    <h3 id={`reg-background-${registration.id}`} className="font-bold text-ink-900">
+                      Learning background (from the family)
                     </h3>
-                    <GroupForm
-                      action={assignGroup.bind(null, student.id, registration.id)}
-                      registrationId={registration.id}
-                      currentGroupId={list?.group_id ?? null}
-                      groups={yearGroups}
-                    />
+                    <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-ink-500">Studied Arabic or Quran before</dt>
+                        <dd className="text-ink-900">{student.studied_arabic_before === null ? "Not answered" : student.studied_arabic_before ? "Yes" : "No"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-ink-500">Quran reading</dt>
+                        <dd className="text-ink-900">{labelFor(QURAN_ABILITY_LABELS, registration.reported_quran_ability)}</dd>
+                      </div>
+                      {registration.quran_background_notes && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-ink-500">Notes</dt>
+                          <dd className="whitespace-pre-line text-ink-900">{registration.quran_background_notes}</dd>
+                        </div>
+                      )}
+                    </dl>
                   </section>
+
+                  {isActiveRegistration ? (
+                    <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-[1fr_1.6fr]">
+                      <section aria-labelledby={`reg-color-${registration.id}`}>
+                        <h3 id={`reg-color-${registration.id}`} className="mb-3 font-bold text-ink-900">
+                          Color group
+                        </h3>
+                        <ColorGroupForm
+                          action={setColorGroup.bind(null, registration.id)}
+                          groups={activeColorGroups}
+                          currentId={list?.color_group_id ?? null}
+                          idPrefix={`reg-${registration.id}`}
+                        />
+                      </section>
+                      <section aria-labelledby={`reg-quran-${registration.id}`}>
+                        <h3 id={`reg-quran-${registration.id}`} className="mb-3 font-bold text-ink-900">
+                          Quran level and teacher
+                        </h3>
+                        <QuranAssignmentForm
+                          action={setQuranAssignment.bind(null, student.id, registration.school_year_id)}
+                          levels={quranLevels}
+                          teachers={teacherOptions}
+                          current={
+                            list?.quran_level_id
+                              ? { levelId: list.quran_level_id, teacherId: list.teacher_id, teacherName: list.teacher_name }
+                              : null
+                          }
+                          idPrefix={`reg-${registration.id}-quran`}
+                        />
+                      </section>
+                    </div>
+                  ) : (
+                    <p className="border-t border-line pt-5 text-sm text-ink-600">
+                      Color group and Quran placement are only available for active registrations.
+                    </p>
+                  )}
 
                   <section aria-labelledby={`reg-pay-${registration.id}`} className="border-t border-line pt-5">
                     <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -281,7 +352,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                       <div className="mt-5 overflow-x-auto rounded-xl border border-line">
                         <table className="w-full text-left text-sm">
                           <caption className="sr-only">Payments recorded</caption>
-                          <thead className="bg-cream-50 text-xs uppercase tracking-wide text-ink-500">
+                          <thead className="bg-mist-50 text-xs uppercase tracking-wide text-ink-500">
                             <tr>
                               <th scope="col" className="px-3 py-2">Date</th>
                               <th scope="col" className="px-3 py-2">Amount</th>
@@ -315,8 +386,8 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                       </div>
                     )}
 
-                    <details className="mt-5 rounded-xl border border-line bg-cream-50 px-4 py-3">
-                      <summary className="cursor-pointer font-semibold text-pine-800">Record a payment</summary>
+                    <details className="mt-5 rounded-xl border border-line bg-mist-50 px-4 py-3">
+                      <summary className="cursor-pointer font-semibold text-brand-800">Record a payment</summary>
                       <div className="mt-4">
                         <RecordPaymentForm action={recordPayment.bind(null, student.id, registration.id)} registrationId={registration.id} today={today} />
                       </div>
@@ -333,7 +404,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
           <Card>
             <CardHeader title="Parents & guardians" action={
               household ? (
-                <Link href={`/admin/families/${household.id}`} className="rounded text-sm font-semibold text-pine-700 hover:underline">
+                <Link href={`/admin/families/${household.id}`} className="rounded text-sm font-semibold text-brand-700 hover:underline">
                   View family
                 </Link>
               ) : undefined
@@ -350,12 +421,12 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                     <p className="text-sm text-ink-500">{labelFor(RELATIONSHIP_LABELS, link.relationship)}</p>
                     <div className="mt-1 space-y-0.5 text-sm">
                       {link.parents.email && (
-                        <a className="block text-pine-700 hover:underline" href={`mailto:${link.parents.email}`}>
+                        <a className="block text-brand-700 hover:underline" href={`mailto:${link.parents.email}`}>
                           {link.parents.email}
                         </a>
                       )}
                       {link.parents.phone && (
-                        <a className="block text-pine-700 hover:underline" href={`tel:${link.parents.phone}`}>
+                        <a className="block text-brand-700 hover:underline" href={`tel:${link.parents.phone}`}>
                           {link.parents.phone}
                         </a>
                       )}
@@ -372,7 +443,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                   {household.emergency_contact_relationship ? ` (${household.emergency_contact_relationship})` : ""}
                 </p>
                 {household.emergency_contact_phone && (
-                  <a className="text-pine-700 hover:underline" href={`tel:${household.emergency_contact_phone}`}>
+                  <a className="text-brand-700 hover:underline" href={`tel:${household.emergency_contact_phone}`}>
                     {household.emergency_contact_phone}
                   </a>
                 )}
@@ -395,10 +466,34 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
                 </>
               ) : (
                 <p className="text-sm text-ink-600">
-                  This information is restricted to full administrators. Ask a school administrator if you need it.
+                  This information is restricted to full administrators. Ask a Noor Kids Club administrator if you need it.
                 </p>
               )}
             </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="Quran assignment history" description="Every level and teacher change is kept" />
+            {quranHistory.length === 0 ? (
+              <p className="px-6 py-5 text-sm text-ink-500">No Quran assignments yet.</p>
+            ) : (
+              <ol className="divide-y divide-line">
+                {quranHistory.map((entry) => (
+                  <li key={entry.id} className="px-5 py-3 text-sm sm:px-6">
+                    <p className="font-bold text-ink-900">
+                      {formatQuranLevel(entry.quran_level_id, entry.quran_levels?.name)}
+                      {entry.status === "active" && <span className="ml-2 text-xs font-bold text-leaf-700">Current</span>}
+                    </p>
+                    <p className="text-ink-700">{entry.teachers?.full_name ?? "No teacher"}</p>
+                    <p className="text-xs text-ink-500">
+                      {formatSchoolYear(entry.school_years?.label ?? "")} · {formatDate(entry.started_on)}
+                      {entry.ended_on ? ` to ${formatDate(entry.ended_on)}` : " onward"} · by {nameOf(entry.created_by)}
+                    </p>
+                    {entry.note && <p className="mt-1 whitespace-pre-line text-ink-600">{entry.note}</p>}
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
 
           <Card>
@@ -409,7 +504,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
           </Card>
 
           <Card>
-            <CardHeader title="Internal notes" description="Visible to school administrators only" />
+            <CardHeader title="Internal notes" description="Visible to program administrators only" />
             <div className="px-5 py-5 sm:px-6">
               <AddNoteForm
                 action={addAdminNote.bind(null, student.id)}
@@ -417,7 +512,7 @@ export default async function StudentDetailPage({ params }: PageProps<"/admin/st
               />
               <ul className="mt-6 space-y-4">
                 {notesRes.data.map((note) => (
-                  <li key={note.id} className="rounded-xl bg-cream-50 p-4 ring-1 ring-line">
+                  <li key={note.id} className="rounded-xl bg-mist-50 p-4 ring-1 ring-line">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs text-ink-500">
                         {nameOf(note.author_id)} · {formatDateTime(note.created_at)}

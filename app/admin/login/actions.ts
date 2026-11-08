@@ -48,7 +48,7 @@ export async function signIn(_previous: LoginState, formData: FormData): Promise
   if (access.status !== "authorized") {
     await supabase.auth.signOut();
     return {
-      error: "This account doesn't have access to the school dashboard. Please contact a school administrator.",
+      error: "This account doesn't have access to the Noor Kids Club dashboard. Please contact a program administrator.",
       email,
     };
   }

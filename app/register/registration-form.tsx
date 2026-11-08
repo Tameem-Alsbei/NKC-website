@@ -24,16 +24,7 @@ import {
 import { RegistrationProgress } from "./progress";
 import { RegistrationConfirmation } from "./registration-confirmation";
 import { ReviewStep } from "./registration-review";
-import {
-  ArabicStep,
-  CareStep,
-  ConsentStep,
-  EnrollmentStep,
-  FamilyStep,
-  fieldId,
-  StudentsStep,
-  type FormApi,
-} from "./registration-steps";
+import { AdditionalStep, BackgroundStep, ChildrenStep, FamilyStep, fieldId, type FormApi } from "./registration-steps";
 
 type Errors = Record<string, string>;
 
@@ -264,18 +255,15 @@ export function RegistrationForm({ schoolYear }: { schoolYear: string }) {
         }}
       >
         <div className="mb-6">
-          <p className="text-sm font-semibold text-gold-600">
-            Step {stepIndex + 1} of {REGISTRATION_STEPS.length}
-          </p>
           <h2
             id="registration-step-heading"
             ref={stepHeadingRef}
             tabIndex={-1}
-            className="mt-1 font-serif text-2xl font-semibold text-pine-900 outline-none sm:text-3xl"
+            className="font-display text-2xl font-semibold text-brand-800 outline-none sm:text-3xl"
           >
             {isReview ? "Review your registration" : step.title}
           </h2>
-          <p className="mt-1 text-ink-600">{step.description}</p>
+          <p className="mt-1 max-w-2xl text-ink-600">{step.description}</p>
         </div>
 
         {!isReview && errorCount > 0 && (
@@ -285,11 +273,9 @@ export function RegistrationForm({ schoolYear }: { schoolYear: string }) {
         )}
 
         {step.id === "family" && <FamilyStep form={form} />}
-        {step.id === "students" && <StudentsStep form={form} />}
-        {step.id === "arabic" && <ArabicStep form={form} />}
-        {step.id === "care" && <CareStep form={form} />}
-        {step.id === "enrollment" && <EnrollmentStep form={form} schoolYear={schoolYear} />}
-        {step.id === "consent" && <ConsentStep form={form} />}
+        {step.id === "children" && <ChildrenStep form={form} schoolYear={schoolYear} />}
+        {step.id === "background" && <BackgroundStep form={form} />}
+        {step.id === "additional" && <AdditionalStep form={form} />}
         {isReview && (
           <>
             {submitError && (

@@ -60,8 +60,8 @@ export default async function FamiliesPage({ searchParams }: PageProps<"/admin/f
           <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.map((family) => (
               <li key={family.id}>
-                <Link href={`/admin/families/${family.id}`} className="block h-full rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-card)] hover:border-pine-600">
-                  <p className="font-serif text-lg font-semibold text-pine-900">{family.display_name}</p>
+                <Link href={`/admin/families/${family.id}`} className="block h-full rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-card)] hover:border-brand-600">
+                  <p className="font-display text-lg font-semibold text-brand-900">{family.display_name}</p>
                   <dl className="mt-3 space-y-2 text-sm">
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-ink-500">Guardians</dt>

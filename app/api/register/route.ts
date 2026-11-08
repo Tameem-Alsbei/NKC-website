@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CONSENT_VERSION } from "@/lib/config/school";
+import { CONSENT_VERSION } from "@/lib/config/program";
 import {
   REGISTRATION_ERROR_MESSAGES,
   registrationErrorFromDatabase,
