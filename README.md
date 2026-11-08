@@ -1,9 +1,9 @@
-# NKC Student Registration and Management System
+# Noor Kids Club: Registration and Management
 
-A web application for the NKC weekend Arabic school. It replaces the Google Forms + spreadsheet workflow:
+The website and administrative dashboard for **Noor Kids Club**, a Saturday Islamic youth program (Saturdays, 2:30–5:30 PM, at NICC in Dublin, Ohio). It replaces the Google Forms + spreadsheet workflow:
 
 - **Families** register one or more children in a single, guided online form.
-- **School administrators** sign in to a private dashboard to review registrations, manage families and guardians, place students in groups, track payments, add internal notes and export lists.
+- **Administrators** sign in to a private dashboard to review registrations, manage families, place children in **color groups** and **Quran levels/teachers**, track payments, add internal notes, manage the rotating theme and export lists.
 - Children's and families' personal information is protected by server-side checks **and** PostgreSQL Row Level Security.
 
 ## Technology
@@ -11,35 +11,38 @@ A web application for the NKC weekend Arabic school. It replaces the Google Form
 | Area | Choice |
 | --- | --- |
 | Framework | Next.js 16 (App Router, Server Components, Server Actions, `proxy.ts`) |
-| UI | React 19, Tailwind CSS 4 |
+| UI | React 19, Tailwind CSS 4, Fredoka + Nunito fonts |
 | Language | TypeScript (strict) |
 | Database & auth | Supabase (PostgreSQL, Auth, Row Level Security) via `@supabase/supabase-js` and `@supabase/ssr` |
 | Validation | [Zod](https://zod.dev) 4: one schema shared by the browser and the server |
 | Tests | Vitest, plus [PGlite](https://pglite.dev) (real PostgreSQL in-process) for database tests |
-| Hosting | Vercel (recommended) |
+| Hosting | Vercel |
 
-## Project layout
+## Where things live
 
 ```
-app/
-  page.tsx                  Public landing page
-  register/                 Multi-step family registration form (client) + page (server)
-  api/register/route.ts     Public registration endpoint (validation, abuse protection, atomic RPC)
-  admin/login/              Staff sign-in (no public sign-up)
-  admin/(dashboard)/        Protected dashboard: overview, students, families, groups, activity log
-  api/admin/export/         CSV export (admins only)
-components/                 UI building blocks (ui/, site/, admin/)
-lib/
-  config/school.ts          School-specific copy, contact details and consent wording (placeholders)
-  registration/             Options, Zod schemas, form state, error messages, rate limiting
-  auth/                     Admin authorization (pure rules + server helpers)
-  admin/                    Dashboard queries, filters, audit-log formatting, action helpers
-  supabase/                 Server, service-role and proxy clients
-  database.types.ts         Database types
-proxy.ts                    Refreshes the auth session and redirects signed-out visitors away from /admin
+lib/config/program.ts       Program name, schedule, tuition, contact, location, activities,
+                            FAQ, consent wording, brand colors, logo, theme visibility
+lib/registration/options.ts Grades, Quran levels, Quran-ability choices, statuses, labels
+public/brand/               Official logo (noor-kids-club-logo.jpg)
+app/icon.png, apple-icon.png  Favicons: the full logo letterboxed on white (not cropped)
+components/site/logo.tsx    The one reusable logo component
+
+app/page.tsx                Public landing page
+app/register/               Family registration (Family, Children, Learning Background,
+                            Additional Information, Review)
+app/api/register/route.ts   Public registration endpoint (validation, abuse protection, atomic RPC)
+app/admin/login/            Staff sign-in (no public sign-up)
+app/admin/(dashboard)/      Overview, Students, Families, Color groups, Quran, Themes, Activity log
+app/api/admin/export/       CSV export (students, color-group rosters, teacher rosters)
+lib/admin/                  Dashboard queries, filters, assignment actions, audit formatting
+lib/auth/                   Admin authorization rules
+lib/email/                  Email-ready confirmation template (not sent yet: no provider configured)
 supabase/migrations/        Every schema, function and RLS change, in order
 tests/                      Unit tests and database tests
 ```
+
+To change program details (tuition label, phone, FAQ answers, consent wording), edit **`lib/config/program.ts`** only.
 
 ## Local setup
 
@@ -59,28 +62,38 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser + server (publishable/anon key) | No: RLS gives anonymous users no data |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only (`lib/supabase/service.ts`) | **Yes**: bypasses RLS. Never prefix with `NEXT_PUBLIC_` |
 | `RATE_LIMIT_SECRET` | Server only, optional | Yes: key used to hash client IPs (falls back to the service key) |
+| `NEXT_PUBLIC_SITE_URL` | Optional | No: absolute URL for social previews (Vercel's domain is used if unset) |
 
-`.env*` files are git-ignored; only `.env.example` (names, no values) is committed.
+`.env*` files are git-ignored; only `.env.example` (names, no values) is committed. **On Vercel, add the same variables under Project → Settings → Environment Variables and redeploy.** Without them the site shows "registration closed" and staff sign-in fails.
 
 ## Supabase setup
 
-1. **Apply the migrations** (below). They create every table, function, view and RLS policy.
-2. **Disable public sign-ups:** Supabase Dashboard → Authentication → Sign In / Providers → turn off *Allow new users to sign up*. Staff accounts are created by an administrator (below). Even if someone did create an account, they would see nothing without an `admin_profiles` row.
-3. Under **Authentication → URL Configuration**, set the Site URL to your production URL.
-4. Set the current school year (see "School years" below).
+1. **Apply the migrations** (below).
+2. **Disable public sign-ups:** Authentication → Sign In / Providers → turn off *Allow new users to sign up*.
+3. Authentication → URL Configuration: set the Site URL to the production URL.
+4. Create the first administrator (below).
 
 ### Applying database migrations
 
-Migrations live in `supabase/migrations/` and must be applied **in filename order**:
+Apply the files in `supabase/migrations/` **in filename order**. Every file is safe to run more than once.
 
 | File | What it does |
 | --- | --- |
-| `20261014000000_baseline_existing_schema.sql` | The tables that existed before migrations were tracked (no-op on the existing project) |
-| `20261014000100_school_management_schema.sql` | School years, households, health notes, groups, assignments, payments, admin tables; backfills existing rows |
-| `20261014000200_functions_and_registration_rpc.sql` | Audit triggers, payment/group rules, the atomic `submit_family_registration` RPC, rate limiter |
-| `20261014000300_admin_views_and_security.sql` | Dashboard views, stats function, **RLS policies and privileges** |
+| `20261014000000_baseline_existing_schema.sql` | Tables that existed before migrations were tracked |
+| `20261014000100_school_management_schema.sql` | School years, households, health notes, payments, admin tables; backfills old rows |
+| `20261014000200_functions_and_registration_rpc.sql` | Audit triggers, payment rules, atomic registration RPC, rate limiter |
+| `20261014000300_admin_views_and_security.sql` | Dashboard views, stats, **RLS policies and privileges** |
+| `20261108000000_noor_program_structure.sql` | Gender, Quran background, **color groups**, **Quran levels/teachers/assignments**, **rotating themes**, updated RPC, views, stats and RLS |
 
-**Option A: Supabase CLI** (recommended for ongoing work)
+> **Existing project:** if you already ran the first four files, run **only `20261108000000_noor_program_structure.sql`** (Supabase → SQL Editor → paste → Run). Back up first (Database → Backups).
+
+How existing data is handled by the newest migration:
+
+- Existing students get `gender = NULL`. Set it on each student's page so they can be placed in color groups.
+- `students.arabic_level` (from the earlier form) is kept as legacy data but is no longer collected or shown.
+- The earlier "Groups & classes" tables (`groups`, `student_group_assignments`) and their rows are **kept untouched** but no longer used by the dashboard. Color groups and Quran assignments replace them. They can be dropped in a later migration once nobody needs that data.
+
+CLI alternative:
 
 ```bash
 npx supabase login
@@ -88,136 +101,107 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
-**Option B: SQL Editor.** Open each file in order, paste it into Supabase → SQL Editor and run it.
-
-> **Back up first.** Supabase → Database → Backups, or export the tables as CSV. The schema migration moves `students.health_information` / `special_considerations` into `student_health_notes`, converts `registrations.school_year` to a `school_year_id` and moves `registrations.group_id` into `student_group_assignments`. Existing rows are preserved. If a constraint fails, the error names it. Fix the offending rows and re-run. The migration also **drops any existing RLS policies** on these tables, so access is exactly what migration 4 defines.
-
-After schema changes, regenerate types (optional but recommended):
-
-```bash
-npx supabase gen types typescript --linked > lib/database.types.ts
-```
-
-The hand-maintained types also export the `TableRow`/`ViewRow` helpers at the bottom of the file; keep those when regenerating.
-
 ### Creating the first administrator
 
-1. Supabase Dashboard → **Authentication → Users → Add user → Create new user**. Enter the staff member's email and a strong password, and tick *Auto Confirm User*.
-2. Copy the new user's **UID** and run in the SQL Editor:
+1. Authentication → Users → **Add user → Create new user**, with *Auto Confirm User* ticked.
+2. Copy the user's UID and run:
 
 ```sql
 insert into public.admin_profiles (user_id, full_name, role)
 values ('<user-uid>', 'Full Name', 'admin');   -- or 'staff'
 ```
 
-Roles:
+- **admin**: everything, including health notes, themes, deleting payments.
+- **staff**: registrations, families, color groups, Quran assignments, teachers and payments. **No** health notes or themes.
 
-- **admin**: full access, including health/special-consideration notes, deleting payments and groups, managing school years.
-- **staff**: manage registrations, families, groups and payments. **Cannot** see health notes.
+Deactivate access with `update public.admin_profiles set is_active = false where user_id = '…';`.
 
-To remove access, set `is_active = false` on their profile (and/or delete the auth user). There is deliberately no UI for granting admin access.
+### School years and tuition
 
-### School years
-
-The public form registers families for the school year where `is_current = true` **and** `registration_open = true`. The migration creates `2026-2027` as current and open. To roll over:
+Registration is open for the school year with `is_current = true` and `registration_open = true` (2026-2027 is created open). Tuition is shown on the site as **$185** from `lib/config/program.ts`. The amount due on each registration comes from `school_years.default_amount_due`, which is **left empty until the billing period is confirmed**. When it is:
 
 ```sql
-update public.school_years set is_current = false, registration_open = false;
-insert into public.school_years (label, is_current, registration_open, default_amount_due)
-values ('2027-2028', true, true, null);   -- set default_amount_due once tuition is decided
+update public.school_years set default_amount_due = 185 where label = '2026-2027';
 ```
 
-Set `registration_open = false` to close registration; the site then shows a "registration closed" message.
+and set `tuition.periodLabel` in `lib/config/program.ts` (for example `"per child, per year"`).
+
+## How students are organized
+
+Every student has **two separate placements per school year**, stored in different tables:
+
+**Color group** (`color_groups`, `color_group_assignments`)
+- Red, Green, Orange, Blue and Yellow, each with a stored display color.
+- Each group has optional placement guidance (age range, boys/girls, notes) that administrators edit on the Color groups page.
+- The dashboard **suggests** a group when exactly one group fits a child's age and gender. Nothing is assigned automatically; an administrator confirms every placement.
+- Withdrawn or rejected students are removed from their color group.
+
+**Quran level and teacher** (`quran_levels`, `teachers`, `teacher_quran_levels`, `quran_assignments`)
+- Levels, in order: **4 – Hifz, 3 – Tajweed, 2 – Tilawah, 1 – Nooraniah**.
+- Any number of teachers per level, and a teacher may teach several levels. Teacher names are database records, managed on Quran → Manage teachers.
+- A student has one active Quran assignment per school year (level, optional teacher, dates, note).
+- **A teacher must teach the chosen level.** This is enforced by a composite foreign key in the database, and the dashboard only offers matching teachers.
+- Changing a level or teacher **closes the current assignment and opens a new one**, so history is kept; the dashboard asks for confirmation first.
+- Teachers are deactivated, never deleted. A level link with history is deactivated rather than removed.
+
+Families describe their child's Quran reading when registering; administrators make the final level and teacher decision.
+
+## Rotating six-year theme
+
+`program_themes` has six slots (cycle positions 1–6) with name, description, main value, accent color, optional dates and an active flag. Full administrators fill them in on **Themes** and choose the active one. The homepage shows the active theme only once it has a name and main value, and only through a narrow public function. Until then the section stays hidden. Turn the homepage section off entirely with `themeSettings.showOnHomepage` in `lib/config/program.ts`.
 
 ## Scripts
 
 ```bash
 npm run lint        # ESLint
 npm run typecheck   # next typegen + tsc --noEmit
-npm test            # Vitest: unit tests + database tests (PGlite, no Supabase needed)
+npm test            # unit tests + database tests (PGlite, no Supabase needed)
 npm run build       # production build
 npm run check       # all of the above
 ```
 
-The database tests (`tests/db`) apply every migration to an in-memory PostgreSQL with Supabase-like roles (`anon`, `authenticated`, `service_role`) and an `auth.uid()` stand-in, then check:
+Database tests apply every migration (twice, to prove they are re-runnable) to an in-memory PostgreSQL with Supabase-like roles and check:
 
-- atomic multi-child registration (a failure on the last child leaves nothing behind)
-- idempotent retries and duplicate-registration protection
-- parent de-duplication by email
-- returning-student matching, and review flags when identity is uncertain
-- RLS: the public cannot read anything, signed-in non-admins see nothing, staff cannot read health notes
-- audit logging, payment-status derivation, and group capacity/year rules
-- migrating legacy data, including dropping old permissive policies
+- atomic multi-child registration and idempotent retries
+- parent de-duplication and returning-student matching
+- the four Quran levels, teacher/level compatibility, assignment history, inactive teachers
+- color groups kept separate from Quran assignments, and dashboard counts
+- themes hidden until real content exists
+- RLS on every table, and the public having no data access
 
 ## Deploying to Vercel
 
-1. Push the repository to GitHub and import it in Vercel (framework preset: Next.js).
-2. Add the environment variables above in **Project → Settings → Environment Variables** (Production and Preview). Mark `SUPABASE_SERVICE_ROLE_KEY` and `RATE_LIMIT_SECRET` as sensitive.
-3. Apply the migrations to the production Supabase project *before* the first deploy.
-4. Deploy. After it's live, set Supabase **Site URL** to the Vercel/custom domain.
-5. Smoke test: open `/`, submit a test registration, sign in at `/admin/login`, find the test student, then withdraw it.
-
-## Database model
-
-```
-school_years ─┐
-              ├─< registrations >── students >── households ──< parents
-groups ───────┘        │   │            │                          │
-   └──< student_group_assignments       └──< student_parents >─────┘
-                       │
-                       ├──< payments
-                       └── registration_submissions (one per form submission)
-students ──1:1── student_health_notes (restricted)     students ──< admin_notes
-admin_profiles (auth.users → role)                       audit_logs (every admin change)
-```
-
-- **households**: a family. Holds the emergency contact. Parents and students belong to one household.
-- **parents**: guardians. Unique by normalized email (`email_normalized`), so a returning parent is never duplicated. A child can have several guardians and a guardian several children through **student_parents** (with `relationship` and `is_primary_contact`).
-- **registrations**: one per student per school year (unique). Carries status, grade for that year, a random reference code (`NKC-XXXXXXXX`), review flags, acknowledgments, amount due and payment status.
-- **payments**: a ledger of amounts received (method, date, receipt/check number). `payment_status` is derived automatically from the ledger and the amount due, except **waived**, which an admin sets.
-- **groups** belong to a school year and have a capacity; **student_group_assignments** places one registration in one group (same-year and capacity rules enforced in the database). Withdrawn or rejected students are removed from their group automatically.
-- **student_health_notes**: health/allergy/special considerations, kept apart so only full admins can read it.
-- **audit_logs**: written by triggers for every insert/update/delete made by a signed-in admin: who, when, which fields, old → new values (never health-note contents).
-- IDs are `bigint` identities, matching the tables that existed before this work.
-
-### How a registration is saved
-
-`POST /api/register`:
-
-1. Validates the body with the same Zod schema as the form.
-2. Rejects bots: a hidden honeypot field, a minimum fill time, and a per-IP rate limit (5 per 10 minutes, IPs stored only as keyed hashes).
-3. Calls `submit_family_registration` with the service role. That PostgreSQL function runs as **one transaction**: it locks on the submission key and guardian email, re-validates everything, matches or creates the household, guardians and students, and creates every registration. Either the whole family is saved or nothing is.
-
-Identity rules: a parent is matched by email, but their stored details are never overwritten by a public form. If the name differs, the registration is flagged *Needs review* and the submitted details are kept for an admin to compare. A child is reused only if the guardian matched cleanly and a child with the same name and date of birth exists in that family; otherwise a new record is created and possible duplicates are flagged. Nothing is merged silently.
-
-Retries (double clicks, network errors) reuse the same idempotency key, so they return the original result instead of creating duplicates.
+1. Import the GitHub repository in Vercel (preset: Next.js).
+2. Add the environment variables (Production and Preview). Mark the secret ones as sensitive.
+3. Apply the migrations to the production Supabase project.
+4. Deploy, then set the Supabase Site URL to the deployed domain.
+5. Smoke test: open `/`, check `/register`, sign in at `/admin/login`.
 
 ## Security and data handling
 
-- **No public data access.** The `anon` role has no table privileges at all; the only public database function returns the open school-year label. Public registration goes only through the server endpoint.
-- **Admins are explicit.** Supabase Auth proves who someone is; an active `admin_profiles` row decides whether they may use the dashboard. This is checked in the dashboard layout, in **every** Server Action and the export route, and again by RLS in the database.
-- **Health information** (special considerations) is only readable by `admin`-role users (RLS on `student_health_notes`), never included in CSV exports, never written to the audit log and never logged by the server. The form asks only for what teachers need to know and says who can see it.
-- **Service-role key** is used only in `lib/supabase/service.ts` (`server-only`), for the registration RPC and rate limiter.
-- **Errors**: parents see friendly messages only; raw database errors are never returned. Server logs contain error codes, never request bodies.
-- **CSV exports** escape cells starting with `= + - @` (formula injection) and exclude health data.
-- **Payments**: tracking only. No card or bank numbers are stored (the form warns against entering them).
-- **Headers**: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, HSTS, `nosniff`, a strict referrer policy; the admin area is `noindex` and `no-store`.
-- The old `/test-db` page (public reads and test inserts) has been removed.
+- The publishable key gives the public **no table access**. The only public functions return the open school-year label and the published theme.
+- Admin access requires an active `admin_profiles` row. It is checked in the dashboard layout, in every Server Action and the export route, and again by RLS.
+- Health/special-consideration notes are readable only by `admin`-role users, never exported, never logged and never copied into the audit log.
+- The service-role key is used only in `lib/supabase/service.ts` (`server-only`).
+- Parents never see raw database errors; server logs contain error codes only.
+- CSV exports neutralize spreadsheet formulas and exclude health data.
+- Payment tracking only: no card or bank numbers are stored.
+- Every administrative change (including color-group and Quran changes) is recorded in `audit_logs`.
 
-## Remaining school-specific configuration
+## Remaining program-specific configuration
 
-These are intentionally left as placeholders. Nothing was invented. Edit `lib/config/school.ts`:
+Nothing below was invented; each item is hidden or shown as a neutral placeholder until supplied. Edit `lib/config/program.ts` unless noted.
 
-| Setting | Current value | Where it appears |
-| --- | --- | --- |
-| `school.name` | "NKC Arabic School" (confirm official name) | Header, titles, footer |
-| `school.schedule` | `null` | Landing page "Important information" |
-| `school.ageRange` | `null` | Landing page "Who we serve" |
-| `school.contact.email` / `phone` / `address` | `null` | Landing page contact section |
-| `school.registration.tuitionSummary` | `null` | Landing page, confirmation page |
-| `school.registration.deadline` | `null` | Landing page |
-| `acknowledgments` → `policies` | Placeholder text, flagged `needsSchoolWording` | Registration consent step. **Replace with school-approved wording** and bump `CONSENT_VERSION` |
-| Tuition amount | `school_years.default_amount_due` is `NULL` | Set in the database once fees are decided |
-| Payment methods | cash, check, card in person, online, bank transfer, other | `lib/registration/options.ts` + `payments_method_check` constraint |
-
-Also review the generic program copy on the landing page (`app/page.tsx`) with school leadership.
+| Item | Current state |
+| --- | --- |
+| Tuition billing period (`tuition.periodLabel`) | `null`: the site shows "$185" with no period |
+| Default amount due per registration | Database `school_years.default_amount_due` is empty (see above) |
+| Public phone number (`contact.phone`) | `null`: not shown |
+| Full venue name (`location.venueFullName`) | `null`: "NICC" is shown |
+| Registration deadline | `null`: not shown |
+| Program policy wording (`acknowledgments` → `policies`) | Placeholder text, flagged `needsProgramWording`. Replace, then bump `CONSENT_VERSION` |
+| FAQ answers for "What should my child bring?" and "Refund policy" | `null`: hidden until answered |
+| Six rotating themes | Empty slots, entered in the dashboard |
+| Color-group age/gender guidance | Empty, entered in the dashboard |
+| Quran teachers | None yet, added in the dashboard |
+| Email provider for confirmations | Not configured. Template ready in `lib/email/registration-confirmation.ts` |

@@ -4,8 +4,8 @@ import { ActionForm } from "@/components/admin/action-form";
 import { FormCheckbox, FormInput, FormSelect, FormTextarea } from "@/components/admin/form-controls";
 import type { ActionResult } from "@/lib/admin/actions";
 import {
-  ARABIC_LEVEL_LABELS,
-  ARABIC_LEVELS,
+  GENDER_LABELS,
+  GENDERS,
   GRADE_LABELS,
   GRADES,
   PAYMENT_METHOD_LABELS,
@@ -29,7 +29,7 @@ export function ProfileForm({
     last_name: string;
     date_of_birth: string;
     grade: string;
-    arabic_level: string | null;
+    gender: "male" | "female" | null;
     studied_arabic_before: boolean | null;
   };
 }) {
@@ -42,17 +42,17 @@ export function ProfileForm({
           <FormInput id="profile-dob" name="dateOfBirth" type="date" label="Date of birth" defaultValue={student.date_of_birth} error={state?.fieldErrors?.dateOfBirth} />
           <FormSelect id="profile-grade" name="grade" label="Current grade" defaultValue={student.grade} options={gradeOptions} error={state?.fieldErrors?.grade} />
           <FormSelect
-            id="profile-level"
-            name="arabicLevel"
-            label="Arabic level"
-            defaultValue={student.arabic_level ?? ""}
-            placeholder="Not set"
-            options={ARABIC_LEVELS.map((l) => ({ value: l, label: ARABIC_LEVEL_LABELS[l] }))}
+            id="profile-gender"
+            name="gender"
+            label="Boy or girl"
+            defaultValue={student.gender ?? ""}
+            placeholder="Not recorded"
+            options={GENDERS.map((g) => ({ value: g, label: GENDER_LABELS[g] }))}
           />
           <FormSelect
             id="profile-studied"
             name="studiedArabicBefore"
-            label="Studied Arabic before"
+            label="Studied Arabic or Quran before"
             defaultValue={student.studied_arabic_before === null ? "" : student.studied_arabic_before ? "yes" : "no"}
             placeholder="Unknown"
             options={[
@@ -107,35 +107,6 @@ export function RegistrationForm({
           )}
         </div>
       )}
-    </ActionForm>
-  );
-}
-
-export function GroupForm({
-  action,
-  registrationId,
-  currentGroupId,
-  groups,
-}: {
-  action: Action;
-  registrationId: number;
-  currentGroupId: number | null;
-  groups: { id: number; name: string; capacity: number; enrolled: number }[];
-}) {
-  return (
-    <ActionForm action={action} submitLabel="Save group" submitVariant="secondary">
-      <FormSelect
-        id={`group-${registrationId}`}
-        name="groupId"
-        label="Class / group"
-        defaultValue={currentGroupId ?? ""}
-        placeholder="Not assigned"
-        hint={groups.length === 0 ? "No groups exist for this school year yet. Create one on the Groups page." : undefined}
-        options={groups.map((g) => ({
-          value: g.id,
-          label: `${g.name} (${g.enrolled}/${g.capacity}${g.enrolled >= g.capacity && g.id !== currentGroupId ? ", full" : ""})`,
-        }))}
-      />
     </ActionForm>
   );
 }

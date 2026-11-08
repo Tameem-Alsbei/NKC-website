@@ -72,7 +72,7 @@ export function ActionForm({
           role={state && !state.ok ? "alert" : "status"}
           className={cn(
             "text-sm font-medium",
-            state?.ok ? "text-pine-700" : "text-danger-700",
+            state?.ok ? "text-brand-700" : "text-danger-700",
             (!state || (state.ok && hideFeedbackOnSuccess)) && "sr-only",
           )}
         >

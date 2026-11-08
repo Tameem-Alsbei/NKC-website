@@ -24,19 +24,61 @@ export const GRADE_LABELS: Record<Grade, string> = {
   "12": "12th grade",
 };
 
-export const ARABIC_LEVELS = ["beginner", "intermediate", "advanced"] as const;
-export type ArabicLevel = (typeof ARABIC_LEVELS)[number];
+/** Needed so administrators can place children in color groups. */
+export const GENDERS = ["male", "female"] as const;
+export type Gender = (typeof GENDERS)[number];
 
-export const ARABIC_LEVEL_LABELS: Record<ArabicLevel, string> = {
+export const GENDER_LABELS: Record<Gender, string> = {
+  male: "Boy",
+  female: "Girl",
+};
+
+/**
+ * What a parent tells us about their child's Quran reading. This is only
+ * guidance: administrators decide the actual Quran level and teacher.
+ */
+export const QURAN_ABILITIES = [
+  "not_started",
+  "learning_letters",
+  "reading_with_help",
+  "reading_fluently",
+  "memorizing",
+] as const;
+export type QuranAbility = (typeof QURAN_ABILITIES)[number];
+
+export const QURAN_ABILITY_LABELS: Record<QuranAbility, string> = {
+  not_started: "Not reading Arabic letters yet",
+  learning_letters: "Learning the Arabic letters and sounds",
+  reading_with_help: "Reads the Quran with some help",
+  reading_fluently: "Reads the Quran fluently",
+  memorizing: "Reads fluently and is memorizing",
+};
+
+/**
+ * Noor Kids Club Quran levels, in their official order. The database seeds
+ * the same four rows (quran_levels.id is the level number).
+ */
+export const QURAN_LEVELS = [
+  { id: 4, name: "Hifz", summary: "Quran memorization" },
+  { id: 3, name: "Tajweed", summary: "The rules of correct recitation" },
+  { id: 2, name: "Tilawah", summary: "Reading and reciting the Quran" },
+  { id: 1, name: "Nooraniah", summary: "Foundations: Arabic letters and sounds" },
+] as const;
+
+/** "4 – Hifz" */
+export function formatQuranLevel(id: number, name?: string | null): string {
+  const levelName = name ?? QURAN_LEVELS.find((level) => level.id === id)?.name ?? "";
+  return `${id} – ${levelName}`;
+}
+
+/**
+ * @deprecated Arabic level was collected by the earlier form. It is kept only
+ * to label legacy data; new registrations no longer ask for it.
+ */
+export const ARABIC_LEVEL_LABELS: Record<string, string> = {
   beginner: "Beginner",
   intermediate: "Intermediate",
   advanced: "Advanced",
-};
-
-export const ARABIC_LEVEL_DESCRIPTIONS: Record<ArabicLevel, string> = {
-  beginner: "Little or no Arabic; learning letters and sounds",
-  intermediate: "Reads simple words and sentences; understands some speech",
-  advanced: "Reads and writes independently; holds conversations",
 };
 
 export const RELATIONSHIPS = ["mother", "father", "parent", "guardian", "grandparent", "other"] as const;

@@ -24,10 +24,12 @@ function completeForm(): RegistrationFormState {
       firstName: "Layla",
       lastName: "Haddad",
       dateOfBirth: "2017-04-12",
+      gender: "female",
       grade: "3",
       isReturning: "no",
-      arabicLevel: "beginner",
       studiedArabicBefore: "yes",
+      quranAbility: "reading_with_help",
+      quranNotes: "",
       specialConsiderations: "",
     },
   ];
@@ -40,16 +42,25 @@ describe("registration schema", () => {
     const parsed = registrationSchema.parse(toRegistrationInput(completeForm()));
     expect(parsed.primaryGuardian.email).toBe("mariam.haddad@example.com");
     expect(parsed.students[0]).toMatchObject({
+      gender: "female",
       studiedArabicBefore: true,
+      quranAbility: "reading_with_help",
+      quranNotes: null,
       isReturning: false,
       specialConsiderations: null,
     });
     expect(parsed.secondaryGuardian).toBeNull();
   });
 
+  it("never asks families for a color group or Quran teacher", () => {
+    const parsed = registrationSchema.parse(toRegistrationInput(completeForm()));
+    expect(Object.keys(parsed.students[0])).not.toEqual(expect.arrayContaining(["colorGroup"]));
+    expect(Object.keys(parsed.students[0]).some((key) => /teacher|colorGroup|quranLevel/i.test(key))).toBe(false);
+  });
+
   it("supports multiple children and rejects duplicates", () => {
     const state = completeForm();
-    state.students.push({ ...state.students[0], key: "s2", firstName: "Yusuf", dateOfBirth: "2019-01-02" });
+    state.students.push({ ...state.students[0], key: "s2", firstName: "Yusuf", gender: "male", dateOfBirth: "2019-01-02" });
     expect(registrationSchema.safeParse(toRegistrationInput(state)).success).toBe(true);
 
     state.students.push({ ...state.students[0], key: "s3" });
@@ -61,7 +72,7 @@ describe("registration schema", () => {
   it("requires every acknowledgment", () => {
     const state = completeForm();
     state.acknowledgments.policies = false;
-    expect(validateStep(state, "consent")).toHaveProperty("acknowledgments.policies");
+    expect(validateStep(state, "additional")).toHaveProperty("acknowledgments.policies");
   });
 
   it("rejects invalid contact details and impossible dates", () => {
@@ -71,20 +82,36 @@ describe("registration schema", () => {
     state.students[0].dateOfBirth = "2099-01-01";
     const family = validateStep(state, "family");
     expect(Object.keys(family).sort()).toEqual(["primaryGuardian.email", "primaryGuardian.phone"]);
-    expect(validateStep(state, "students")).toHaveProperty("students.0.dateOfBirth");
+    expect(validateStep(state, "children")).toHaveProperty("students.0.dateOfBirth");
   });
 
-  it("requires a yes/no answer for studied Arabic before", () => {
+  it("asks for gender, grade and new/returning on the Children step", () => {
+    const state = completeForm();
+    state.students[0].gender = "";
+    state.students[0].grade = "";
+    state.students[0].isReturning = "";
+    expect(Object.keys(validateStep(state, "children")).sort()).toEqual([
+      "students.0.gender",
+      "students.0.grade",
+      "students.0.isReturning",
+    ]);
+  });
+
+  it("asks about Arabic/Quran experience on the Learning Background step", () => {
     const state = completeForm();
     state.students[0].studiedArabicBefore = "";
-    expect(validateStep(state, "arabic")).toEqual({ "students.0.studiedArabicBefore": "Please choose yes or no" });
+    state.students[0].quranAbility = "";
+    expect(validateStep(state, "background")).toEqual({
+      "students.0.studiedArabicBefore": "Please choose yes or no",
+      "students.0.quranAbility": "Please choose the closest description",
+    });
   });
 
   it("only reports errors that belong to the current step", () => {
     const state = initialFormState("s1");
     const errors = validateStep(state, "family");
     expect(Object.keys(errors).every((key) => key.startsWith("primaryGuardian."))).toBe(true);
-    expect(validateStep(completeForm(), "enrollment")).toEqual({});
+    expect(validateStep(completeForm(), "children")).toEqual({});
   });
 
   it("validates an optional second guardian only when added", () => {
@@ -104,16 +131,15 @@ describe("registration schema", () => {
     expect(parsed.error?.issues.some((i) => i.path.join(".") === "secondaryGuardian.email")).toBe(true);
 
     state.secondaryGuardian.email = "";
-    expect(registrationSchema.parse(toRegistrationInput(state)).secondaryGuardian).toMatchObject({
-      email: null,
-      phone: null,
-    });
+    expect(registrationSchema.parse(toRegistrationInput(state)).secondaryGuardian).toMatchObject({ email: null, phone: null });
   });
 
-  it("limits the length of special considerations", () => {
+  it("limits the length of special considerations and Quran notes", () => {
     const state = completeForm();
     state.students[0].specialConsiderations = "x".repeat(1001);
-    expect(validateStep(state, "care")).toHaveProperty("students.0.specialConsiderations");
+    state.students[0].quranNotes = "x".repeat(1001);
+    expect(validateStep(state, "additional")).toHaveProperty("students.0.specialConsiderations");
+    expect(validateStep(state, "background")).toHaveProperty("students.0.quranNotes");
   });
 
   it("rejects unexpected types sent directly to the API", () => {

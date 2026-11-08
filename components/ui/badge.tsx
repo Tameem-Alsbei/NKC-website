@@ -4,8 +4,8 @@ import { cn } from "./cn";
 export type BadgeTone = "neutral" | "green" | "gold" | "blue" | "red" | "muted";
 
 const tones: Record<BadgeTone, string> = {
-  neutral: "bg-cream-100 text-ink-700 ring-line-strong",
-  green: "bg-pine-50 text-pine-800 ring-pine-200",
+  neutral: "bg-mist-100 text-ink-700 ring-line-strong",
+  green: "bg-brand-50 text-brand-800 ring-brand-200",
   gold: "bg-warning-50 text-warning-800 ring-warning-200",
   blue: "bg-info-50 text-info-800 ring-info-200",
   red: "bg-danger-50 text-danger-800 ring-danger-200",

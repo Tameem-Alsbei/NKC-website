@@ -1,16 +1,16 @@
 import {
-  ARABIC_LEVELS,
+  GENDERS,
   GRADES,
   PAYMENT_STATUSES,
   REGISTRATION_STATUSES,
-  type ArabicLevel,
+  type Gender,
   type Grade,
   type PaymentStatus,
   type RegistrationStatus,
 } from "@/lib/registration/options";
 
 /**
- * Filters for the students list and CSV export, parsed from URL search
+ * Filters for the students list and CSV exports, parsed from URL search
  * params. Unknown or malformed values are ignored rather than trusted.
  */
 export type StudentFilters = {
@@ -19,16 +19,22 @@ export type StudentFilters = {
   status: RegistrationStatus | null;
   payment: PaymentStatus | null;
   grade: Grade | null;
-  level: ArabicLevel | "unknown" | null;
+  gender: Gender | "unknown" | null;
   returning: "new" | "returning" | null;
-  group: number | "none" | null;
+  colorGroup: number | "none" | null;
+  quranLevel: number | "none" | null;
+  teacher: number | "none" | null;
+  /** "unassigned": missing a color group, Quran level or teacher. "assigned": has all three. */
+  assignment: "assigned" | "unassigned" | null;
   review: boolean;
-  sort: "name" | "grade" | "registered" | "status";
+  sort: "name" | "age" | "grade" | "registered" | "status" | "quran";
   dir: "asc" | "desc";
   page: number;
 };
 
 export const STUDENTS_PAGE_SIZE = 25;
+
+const SORTS = ["name", "age", "grade", "registered", "status", "quran"] as const;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -44,15 +50,16 @@ const positiveInt = (value: string | undefined): number | null => {
   return n > 0 ? n : null;
 };
 
+const idOrNone = (value: string | undefined): number | "none" | null => (value === "none" ? "none" : positiveInt(value));
+
 /** Newest registrations first; alphabetical/ascending for everything else. */
 export function defaultSortDirection(sort: StudentFilters["sort"]): StudentFilters["dir"] {
   return sort === "registered" ? "desc" : "asc";
 }
 
 export function parseStudentFilters(params: SearchParams): StudentFilters {
-  const group = first(params.group);
-  const level = first(params.level);
-  const sort = oneOf(["name", "grade", "registered", "status"] as const, first(params.sort)) ?? "registered";
+  const gender = first(params.gender);
+  const sort = oneOf(SORTS, first(params.sort)) ?? "registered";
   const dir = oneOf(["asc", "desc"] as const, first(params.dir)) ?? defaultSortDirection(sort);
   return {
     q: (first(params.q) ?? "").trim().slice(0, 100),
@@ -60,9 +67,12 @@ export function parseStudentFilters(params: SearchParams): StudentFilters {
     status: oneOf(REGISTRATION_STATUSES, first(params.status)),
     payment: oneOf(PAYMENT_STATUSES, first(params.payment)),
     grade: oneOf(GRADES, first(params.grade)),
-    level: level === "unknown" ? "unknown" : oneOf(ARABIC_LEVELS, level),
+    gender: gender === "unknown" ? "unknown" : oneOf(GENDERS, gender),
     returning: oneOf(["new", "returning"] as const, first(params.returning)),
-    group: group === "none" ? "none" : positiveInt(group),
+    colorGroup: idOrNone(first(params.colorGroup)),
+    quranLevel: idOrNone(first(params.quranLevel)),
+    teacher: idOrNone(first(params.teacher)),
+    assignment: oneOf(["assigned", "unassigned"] as const, first(params.assignment)),
     review: first(params.review) === "1",
     sort,
     dir,
@@ -82,9 +92,12 @@ export function studentFiltersToQuery(filters: Partial<StudentFilters>): string 
   set("status", filters.status);
   set("payment", filters.payment);
   set("grade", filters.grade);
-  set("level", filters.level);
+  set("gender", filters.gender);
   set("returning", filters.returning);
-  set("group", filters.group);
+  set("colorGroup", filters.colorGroup);
+  set("quranLevel", filters.quranLevel);
+  set("teacher", filters.teacher);
+  set("assignment", filters.assignment);
   set("review", filters.review);
   const sort = filters.sort ?? "registered";
   if (sort !== "registered") set("sort", sort);
@@ -101,12 +114,20 @@ export function escapeLikePattern(term: string): string {
 
 /**
  * Minimal query-builder surface used by applyStudentFilters, so the same
- * logic serves the list page and the CSV export (and can be unit tested).
+ * logic serves the list page and the CSV exports (and can be unit tested).
  */
 export interface FilterableQuery<Q> {
   eq(column: string, value: string | number | boolean): Q;
   is(column: string, value: null): Q;
+  not(column: string, operator: "is", value: null): Q;
   ilike(column: string, pattern: string): Q;
+  or(filters: string): Q;
+}
+
+function idFilter<Q extends FilterableQuery<Q>>(q: Q, column: string, value: number | "none" | null): Q {
+  if (value === "none") return q.is(column, null);
+  if (value !== null) return q.eq(column, value);
+  return q;
 }
 
 export function applyStudentFilters<Q extends FilterableQuery<Q>>(query: Q, filters: StudentFilters, yearId: number): Q {
@@ -115,18 +136,35 @@ export function applyStudentFilters<Q extends FilterableQuery<Q>>(query: Q, filt
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.payment) q = q.eq("payment_status", filters.payment);
   if (filters.grade) q = q.eq("grade", filters.grade);
-  if (filters.level === "unknown") q = q.is("arabic_level", null);
-  else if (filters.level) q = q.eq("arabic_level", filters.level);
+  if (filters.gender === "unknown") q = q.is("gender", null);
+  else if (filters.gender) q = q.eq("gender", filters.gender);
   if (filters.returning) q = q.eq("is_returning", filters.returning === "returning");
-  if (filters.group === "none") q = q.is("group_id", null);
-  else if (filters.group) q = q.eq("group_id", filters.group);
+  q = idFilter(q, "color_group_id", filters.colorGroup);
+  q = idFilter(q, "quran_level_id", filters.quranLevel);
+  q = idFilter(q, "teacher_id", filters.teacher);
+  if (filters.assignment === "unassigned") {
+    q = q.eq("is_active", true).or("color_group_id.is.null,quran_level_id.is.null,teacher_id.is.null");
+  } else if (filters.assignment === "assigned") {
+    q = q.not("color_group_id", "is", null).not("quran_level_id", "is", null).not("teacher_id", "is", null);
+  }
   if (filters.review) q = q.eq("needs_review", true);
   return q;
 }
 
-export const SORT_COLUMNS: Record<StudentFilters["sort"], string[]> = {
-  name: ["student_last_name", "student_first_name"],
-  grade: ["grade_rank", "student_last_name"],
-  registered: ["registered_at"],
-  status: ["status", "student_last_name"],
+/** Columns to order by for each sort option (age sorts by date of birth, youngest last). */
+export const SORT_COLUMNS: Record<StudentFilters["sort"], { column: string; invert?: boolean }[]> = {
+  name: [{ column: "student_last_name" }, { column: "student_first_name" }],
+  age: [{ column: "date_of_birth", invert: true }, { column: "student_last_name" }],
+  grade: [{ column: "grade_rank" }, { column: "student_last_name" }],
+  registered: [{ column: "registered_at" }],
+  status: [{ column: "status" }, { column: "student_last_name" }],
+  quran: [{ column: "quran_level_sort" }, { column: "teacher_name" }, { column: "student_last_name" }],
 };
+
+/** Applies SORT_COLUMNS to a query in the chosen direction. */
+export function orderForSort(filters: StudentFilters): { column: string; ascending: boolean }[] {
+  return SORT_COLUMNS[filters.sort].map(({ column, invert }) => {
+    const ascending = filters.dir === "asc";
+    return { column, ascending: invert ? !ascending : ascending };
+  });
+}

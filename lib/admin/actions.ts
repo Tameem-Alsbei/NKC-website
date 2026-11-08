@@ -56,10 +56,15 @@ type DbError = { code?: string; message?: string } | null;
 export function describeDbError(error: DbError, fallback = "The change could not be saved. Please try again."): string {
   if (!error) return fallback;
   const message = error.message ?? "";
-  if (message.includes("group_full")) return "That group is already at capacity. Increase its capacity or choose another group.";
-  if (message.includes("group_year_mismatch")) return "That group belongs to a different school year.";
+  if (message.includes("teacher_not_available_for_level") || message.includes("quran_assignments_teacher_level_fkey")) {
+    return "That teacher doesn't currently teach the selected Quran level. Choose another teacher or update the teacher's levels.";
+  }
+  if (message.includes("teacher_requires_level")) return "Choose a Quran level before choosing a teacher.";
+  if (message.includes("no_active_registration")) return "This student has no active registration for that school year.";
+  if (message.includes("color_group_inactive")) return "That color group is not active.";
+  if (message.includes("registration_inactive")) return "Withdrawn or rejected students can't be placed in a group.";
+  if (message.includes("program_themes_active_needs_content")) return "Add a theme name and main value before making it active.";
   if (message.includes("parents_email_normalized_key")) return "Another guardian already uses that email address.";
-  if (message.includes("groups_school_year_name_key")) return "A group with that name already exists for this school year.";
   if (error.code === "23503") return "This record is still in use and can't be removed.";
   if (error.code === "23514") return "One of the values isn't allowed. Please check the form.";
   if (error.code === "42501") return "You don't have permission to make this change.";

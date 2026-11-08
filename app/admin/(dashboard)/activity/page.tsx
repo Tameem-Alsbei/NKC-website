@@ -13,7 +13,9 @@ const PAGE_SIZE = 50;
 
 function recordLink(table: string, recordId: string): string | null {
   if (table === "students" || table === "student_health_notes") return `/admin/students/${recordId}`;
-  if (table === "groups") return `/admin/groups/${recordId}`;
+  if (table === "color_groups") return `/admin/color-groups/${recordId}`;
+  if (table === "teachers") return `/admin/quran/teachers/${recordId}`;
+  if (table === "program_themes") return "/admin/themes";
   if (table === "households") return `/admin/families/${recordId}`;
   return null;
 }
@@ -53,7 +55,7 @@ export default async function ActivityPage({ searchParams }: PageProps<"/admin/a
                       {href && (
                         <>
                           {" "}
-                          <Link href={href} className="font-semibold text-pine-700 hover:underline">
+                          <Link href={href} className="font-semibold text-brand-700 hover:underline">
                             View
                           </Link>
                         </>

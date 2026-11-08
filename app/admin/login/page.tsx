@@ -22,14 +22,14 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
   if (access.status === "authorized") redirect(next ?? "/admin");
 
   return (
-    <main id="main" className="flex flex-1 items-center justify-center bg-cream-100 px-4 py-12">
+    <main id="main" className="flex flex-1 items-center justify-center bg-brand-50 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <Logo />
+          <Logo size="lg" plate eager />
         </div>
         <div className="rounded-2xl border border-line bg-white p-6 shadow-[var(--shadow-card)] sm:p-8">
-          <h1 className="font-serif text-2xl font-semibold text-pine-900">Staff sign in</h1>
-          <p className="mt-1 text-sm text-ink-500">For approved school administrators only.</p>
+          <h1 className="font-display text-2xl font-semibold text-brand-800">Staff sign in</h1>
+          <p className="mt-1 text-sm text-ink-500">For approved Noor Kids Club administrators only.</p>
 
           <div className="mt-6 space-y-5">
             {params.signed_out === "1" && <Alert tone="success">You have been signed out.</Alert>}
@@ -38,7 +38,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
               <>
                 <Alert tone="warning" title="No dashboard access">
                   You&apos;re signed in{access.email ? ` as ${access.email}` : ""}, but this account isn&apos;t an approved
-                  school administrator. Please contact a school administrator if you need access.
+                  Noor Kids Club administrator. Please contact a program administrator if you need access.
                 </Alert>
                 <form action={signOut}>
                   <Button type="submit" variant="secondary" className="w-full">
@@ -53,8 +53,8 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
         </div>
         <p className="mt-6 text-center text-sm text-ink-500">
           Are you a parent?{" "}
-          <Link href="/register" className="font-semibold text-pine-700 underline-offset-4 hover:underline">
-            Register a student
+          <Link href="/register" className="font-semibold text-brand-700 underline-offset-4 hover:underline">
+            Register a child
           </Link>
         </p>
       </div>

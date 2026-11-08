@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { acknowledgments, type AcknowledgmentId } from "@/lib/config/school";
+import { acknowledgments, type AcknowledgmentId } from "@/lib/config/program";
 import {
-  ARABIC_LEVELS,
+  GENDERS,
   GRADES,
   MAX_STUDENTS_PER_REGISTRATION,
+  QURAN_ABILITIES,
   RELATIONSHIPS,
   SPECIAL_CONSIDERATIONS_MAX_LENGTH,
 } from "./options";
@@ -104,19 +105,26 @@ export function ageOnDate(dateOfBirth: string, on: string = todayIso()): number 
 }
 
 export const studentSchema = z.object({
-  firstName: personName("the student's first name"),
-  lastName: personName("the student's last name"),
+  firstName: personName("your child's first name"),
+  lastName: personName("your child's last name"),
   dateOfBirth: z
     .iso.date({ error: "Please enter a valid date of birth" })
     .refine((value) => value <= todayIso(), "The date of birth can't be in the future")
     .refine((value) => {
       const age = ageOnDate(value);
       return age >= 2 && age <= 20;
-    }, "Please check the date of birth. The student should be between 2 and 20 years old."),
+    }, "Please check the date of birth. Children should be between 2 and 20 years old."),
+  gender: z.enum(GENDERS, { error: "Please choose one" }),
   grade: z.enum(GRADES, { error: "Please choose a grade" }),
-  isReturning: z.boolean({ error: "Please tell us whether this student is new or returning" }),
-  arabicLevel: z.enum(ARABIC_LEVELS, { error: "Please choose the closest Arabic level" }),
+  isReturning: z.boolean({ error: "Please tell us whether this child is new or returning" }),
   studiedArabicBefore: z.boolean({ error: "Please choose yes or no" }),
+  quranAbility: z.enum(QURAN_ABILITIES, { error: "Please choose the closest description" }),
+  quranNotes: z
+    .string()
+    .trim()
+    .max(1000, "Please keep this under 1,000 characters")
+    .transform((value) => (value === "" ? null : value))
+    .nullable(),
   specialConsiderations: z
     .string()
     .trim()
@@ -144,8 +152,8 @@ export const registrationSchema = z
     emergencyContact: emergencyContactSchema,
     students: z
       .array(studentSchema)
-      .min(1, "Please add at least one student")
-      .max(MAX_STUDENTS_PER_REGISTRATION, `Please register at most ${MAX_STUDENTS_PER_REGISTRATION} students at a time`),
+      .min(1, "Please add at least one child")
+      .max(MAX_STUDENTS_PER_REGISTRATION, `Please register at most ${MAX_STUDENTS_PER_REGISTRATION} children at a time`),
     acknowledgments: acknowledgmentsSchema,
   })
   .superRefine((value, ctx) => {
@@ -165,7 +173,7 @@ export const registrationSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["students", index, "firstName"],
-          message: "This student has already been added above",
+          message: "This child has already been added above",
         });
       }
       seen.add(key);

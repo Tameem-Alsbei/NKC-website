@@ -2,18 +2,23 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 import { cn } from "./cn";
 
-type Variant = "primary" | "secondary" | "ghost" | "gold" | "danger";
+/**
+ * primary   - blue, for most actions (especially in the dashboard)
+ * cta       - orange with navy text, for the main call to action (Register)
+ * secondary - outlined
+ */
+type Variant = "primary" | "cta" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 select-none";
+  "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 select-none";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-pine-800 text-cream-50 hover:bg-pine-900 active:bg-pine-950 shadow-sm",
+  primary: "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 shadow-sm",
+  cta: "bg-sun-500 text-brand-950 hover:bg-sun-400 active:bg-sun-400 shadow-sm",
   secondary:
-    "border border-line-strong bg-white text-pine-900 hover:border-pine-700 hover:bg-pine-50 active:bg-pine-100",
-  ghost: "text-pine-800 hover:bg-pine-50 active:bg-pine-100",
-  gold: "bg-gold-300 text-pine-950 hover:bg-gold-400 active:bg-gold-400 shadow-sm",
+    "border-2 border-brand-200 bg-white text-brand-800 hover:border-brand-500 hover:bg-brand-50 active:bg-brand-100",
+  ghost: "text-brand-700 hover:bg-brand-50 active:bg-brand-100",
   danger: "border border-danger-200 bg-white text-danger-700 hover:bg-danger-50",
 };
 

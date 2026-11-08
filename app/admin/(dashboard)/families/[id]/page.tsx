@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ColorGroupLabel } from "@/components/admin/color-group-label";
 import { InlineActionButton } from "@/components/admin/inline-action-button";
 import { PageHeader } from "@/components/admin/layout-parts";
 import { NeedsReviewBadge, PaymentStatusBadge, RegistrationStatusBadge } from "@/components/admin/status-badges";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth/admin";
 import { ageFromDateOfBirth, formatDate, fullName, labelFor } from "@/lib/format";
-import { GRADE_LABELS, RELATIONSHIP_LABELS } from "@/lib/registration/options";
+import { formatQuranLevel, GRADE_LABELS, RELATIONSHIP_LABELS } from "@/lib/registration/options";
 import { formatSchoolYear } from "@/lib/school-year-format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { addGuardian, makePrimaryContact, unlinkGuardian, updateGuardian, updateHousehold } from "./actions";
@@ -37,7 +38,7 @@ export default async function FamilyDetailPage({ params }: PageProps<"/admin/fam
       .order("date_of_birth"),
     supabase
       .from("admin_registration_list")
-      .select("registration_id, student_id, student_first_name, student_last_name, school_year, reference_code, grade, status, payment_status, group_name, needs_review")
+      .select("registration_id, student_id, student_first_name, student_last_name, school_year, reference_code, grade, status, payment_status, color_group_name, color_group_color, quran_level_id, quran_level_name, teacher_name, needs_review")
       .eq("household_id", householdId)
       .order("school_year", { ascending: false })
       .order("student_first_name"),
@@ -80,7 +81,7 @@ export default async function FamilyDetailPage({ params }: PageProps<"/admin/fam
                 {children.map((child) => (
                   <li key={child.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 sm:px-6">
                     <div>
-                      <Link href={`/admin/students/${child.id}`} className="font-semibold text-pine-800 hover:underline">
+                      <Link href={`/admin/students/${child.id}`} className="font-semibold text-brand-800 hover:underline">
                         {fullName(child.first_name, child.last_name)}
                       </Link>
                       <p className="text-sm text-ink-500">
@@ -101,14 +102,15 @@ export default async function FamilyDetailPage({ params }: PageProps<"/admin/fam
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <caption className="sr-only">Registrations for this family</caption>
-                  <thead className="bg-cream-50 text-xs uppercase tracking-wide text-ink-500">
+                  <thead className="bg-mist-50 text-xs uppercase tracking-wide text-ink-500">
                     <tr>
                       <th scope="col" className="px-4 py-2.5">Year</th>
                       <th scope="col" className="px-4 py-2.5">Student</th>
                       <th scope="col" className="px-4 py-2.5">Grade</th>
                       <th scope="col" className="px-4 py-2.5">Status</th>
                       <th scope="col" className="px-4 py-2.5">Payment</th>
-                      <th scope="col" className="px-4 py-2.5">Group</th>
+                      <th scope="col" className="px-4 py-2.5">Color group</th>
+                      <th scope="col" className="px-4 py-2.5">Quran</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -116,7 +118,7 @@ export default async function FamilyDetailPage({ params }: PageProps<"/admin/fam
                       <tr key={row.registration_id}>
                         <td className="whitespace-nowrap px-4 py-2.5">{formatSchoolYear(row.school_year)}</td>
                         <td className="px-4 py-2.5">
-                          <Link href={`/admin/students/${row.student_id}`} className="font-semibold text-pine-800 hover:underline">
+                          <Link href={`/admin/students/${row.student_id}`} className="font-semibold text-brand-800 hover:underline">
                             {fullName(row.student_first_name, row.student_last_name)}
                           </Link>
                           <span className="block text-xs text-ink-500">{row.reference_code}</span>
@@ -129,7 +131,13 @@ export default async function FamilyDetailPage({ params }: PageProps<"/admin/fam
                           </span>
                         </td>
                         <td className="px-4 py-2.5"><PaymentStatusBadge status={row.payment_status} /></td>
-                        <td className="px-4 py-2.5">{row.group_name ?? <span className="text-ink-500">—</span>}</td>
+                        <td className="px-4 py-2.5">
+                          <ColorGroupLabel name={row.color_group_name} color={row.color_group_color} />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {row.quran_level_id ? formatQuranLevel(row.quran_level_id, row.quran_level_name) : <span className="text-ink-500">Not assigned</span>}
+                          {row.quran_level_id && <span className="block text-xs text-ink-500">{row.teacher_name ?? "No teacher yet"}</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

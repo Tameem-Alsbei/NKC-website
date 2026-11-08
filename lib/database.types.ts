@@ -91,6 +91,7 @@ export type Database = {
           grade: string;
           arabic_level: string | null;
           studied_arabic_before: boolean | null;
+          gender: "male" | "female" | null;
         } & Timestamps;
         Insert: {
           household_id?: number | null;
@@ -100,6 +101,7 @@ export type Database = {
           grade: string;
           arabic_level?: string | null;
           studied_arabic_before?: boolean | null;
+          gender?: "male" | "female" | null;
         };
         Update: Partial<Database["public"]["Tables"]["students"]["Insert"]>;
         Relationships: [
@@ -230,6 +232,8 @@ export type Database = {
           amount_due: number | null;
           payment_status: string;
           payment_note: string | null;
+          reported_quran_ability: string | null;
+          quran_background_notes: string | null;
           registered_at: string;
           status_changed_at: string | null;
           status_changed_by: string | null;
@@ -367,6 +371,145 @@ export type Database = {
           },
         ];
       };
+      color_groups: {
+        Row: {
+          id: number;
+          slug: string;
+          name: string;
+          color_hex: string;
+          text_color_hex: string;
+          sort_order: number;
+          min_age: number | null;
+          max_age: number | null;
+          gender: "male" | "female" | "any";
+          criteria_note: string | null;
+          is_active: boolean;
+        } & Timestamps;
+        Insert: never;
+        Update: {
+          min_age?: number | null;
+          max_age?: number | null;
+          gender?: "male" | "female" | "any";
+          criteria_note?: string | null;
+        };
+        Relationships: [];
+      };
+      color_group_assignments: {
+        Row: { registration_id: number; color_group_id: number; assigned_at: string; assigned_by: string | null };
+        Insert: { registration_id: number; color_group_id: number };
+        Update: { color_group_id?: number };
+        Relationships: [
+          {
+            foreignKeyName: "color_group_assignments_registration_id_fkey";
+            columns: ["registration_id"];
+            isOneToOne: true;
+            referencedRelation: "registrations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "color_group_assignments_color_group_id_fkey";
+            columns: ["color_group_id"];
+            isOneToOne: false;
+            referencedRelation: "color_groups";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      quran_levels: {
+        Row: { id: number; name: string; sort_order: number; created_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      teachers: {
+        Row: { id: number; full_name: string; email: string | null; notes: string | null; is_active: boolean } & Timestamps;
+        Insert: { full_name: string; email?: string | null; notes?: string | null; is_active?: boolean };
+        Update: { full_name?: string; email?: string | null; notes?: string | null; is_active?: boolean };
+        Relationships: [];
+      };
+      teacher_quran_levels: {
+        Row: { teacher_id: number; quran_level_id: number; is_active: boolean; created_at: string };
+        Insert: { teacher_id: number; quran_level_id: number; is_active?: boolean };
+        Update: { is_active?: boolean };
+        Relationships: [
+          {
+            foreignKeyName: "teacher_quran_levels_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: false;
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "teacher_quran_levels_quran_level_id_fkey";
+            columns: ["quran_level_id"];
+            isOneToOne: false;
+            referencedRelation: "quran_levels";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      quran_assignments: {
+        Row: {
+          id: number;
+          student_id: number;
+          school_year_id: number;
+          quran_level_id: number;
+          teacher_id: number | null;
+          status: "active" | "ended";
+          started_on: string;
+          ended_on: string | null;
+          note: string | null;
+          created_by: string | null;
+        } & Timestamps;
+        Insert: never;
+        Update: { note?: string | null };
+        Relationships: [
+          {
+            foreignKeyName: "quran_assignments_quran_level_id_fkey";
+            columns: ["quran_level_id"];
+            isOneToOne: false;
+            referencedRelation: "quran_levels";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quran_assignments_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: false;
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quran_assignments_school_year_id_fkey";
+            columns: ["school_year_id"];
+            isOneToOne: false;
+            referencedRelation: "school_years";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      program_themes: {
+        Row: {
+          id: number;
+          cycle_position: number;
+          name: string | null;
+          description: string | null;
+          main_value: string | null;
+          color_hex: string | null;
+          is_active: boolean;
+          starts_on: string | null;
+          ends_on: string | null;
+        } & Timestamps;
+        Insert: never;
+        Update: {
+          name?: string | null;
+          description?: string | null;
+          main_value?: string | null;
+          color_hex?: string | null;
+          starts_on?: string | null;
+          ends_on?: string | null;
+        };
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: number;
@@ -392,6 +535,7 @@ export type Database = {
           school_year_id: number;
           school_year: string;
           status: string;
+          is_active: boolean;
           payment_status: string;
           amount_due: number | null;
           amount_paid: number;
@@ -399,41 +543,33 @@ export type Database = {
           grade_rank: number | null;
           is_returning: boolean;
           needs_review: boolean;
+          reported_quran_ability: string | null;
           registered_at: string;
           updated_at: string;
           student_id: number;
           student_first_name: string;
           student_last_name: string;
           date_of_birth: string;
-          arabic_level: string | null;
+          gender: "male" | "female" | null;
           studied_arabic_before: boolean | null;
           household_id: number | null;
-          group_id: number | null;
-          group_name: string | null;
+          color_group_id: number | null;
+          color_group_name: string | null;
+          color_group_slug: string | null;
+          color_group_color: string | null;
+          color_group_text_color: string | null;
+          quran_assignment_id: number | null;
+          quran_level_id: number | null;
+          quran_level_name: string | null;
+          quran_level_sort: number | null;
+          teacher_id: number | null;
+          teacher_name: string | null;
           guardian_id: number | null;
           guardian_first_name: string | null;
           guardian_last_name: string | null;
           guardian_email: string | null;
           guardian_phone: string | null;
           search_text: string;
-        };
-        Relationships: [];
-      };
-      admin_group_overview: {
-        Row: {
-          id: number;
-          name: string;
-          school_year_id: number;
-          school_year: string;
-          minimum_grade: string | null;
-          maximum_grade: string | null;
-          arabic_level: string | null;
-          teacher_name: string | null;
-          capacity: number;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-          enrolled_count: number;
         };
         Relationships: [];
       };
@@ -468,6 +604,28 @@ export type Database = {
       };
       admin_dashboard_stats: {
         Args: { p_school_year_id: number };
+        Returns: Json;
+      };
+      admin_set_quran_assignment: {
+        Args: {
+          p_student_id: number;
+          p_school_year_id: number;
+          p_quran_level_id: number | null;
+          p_teacher_id: number | null;
+          p_note?: string | null;
+        };
+        Returns: number | null;
+      };
+      admin_bulk_set_quran_assignment: {
+        Args: { p_student_ids: number[]; p_school_year_id: number; p_quran_level_id: number | null; p_teacher_id: number | null };
+        Returns: number;
+      };
+      admin_set_active_theme: {
+        Args: { p_theme_id: number | null };
+        Returns: undefined;
+      };
+      get_active_theme: {
+        Args: Record<PropertyKey, never>;
         Returns: Json;
       };
       admin_add_guardian: {

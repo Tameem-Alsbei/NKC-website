@@ -13,7 +13,7 @@ import {
 import { canManageSensitiveRecords, canViewHealthNotes } from "@/lib/auth/access";
 import { getAuthorizedAdmin } from "@/lib/auth/admin";
 import {
-  ARABIC_LEVELS,
+  GENDERS,
   GRADES,
   PAYMENT_METHODS,
   REGISTRATION_STATUSES,
@@ -57,7 +57,7 @@ const profileSchema = z.object({
   lastName: name,
   dateOfBirth: z.iso.date("Enter a valid date"),
   grade: z.enum(GRADES, "Choose a grade"),
-  arabicLevel: z.enum(ARABIC_LEVELS).optional(),
+  gender: z.enum(GENDERS).optional(),
   studiedArabicBefore: z.enum(["yes", "no"]).optional(),
 });
 
@@ -75,7 +75,7 @@ export async function updateStudentProfile(studentId: number, _prev: ActionResul
       last_name: data.lastName,
       date_of_birth: data.dateOfBirth,
       grade: data.grade,
-      arabic_level: data.arabicLevel ?? null,
+      gender: data.gender ?? null,
       studied_arabic_before: data.studiedArabicBefore ? data.studiedArabicBefore === "yes" : null,
     })
     .eq("id", id.parse(studentId))
@@ -120,39 +120,6 @@ export async function updateRegistration(
   if (result.error || result.data.length === 0) return failure(describeDbError(result.error));
   refresh(studentId);
   return success("Registration updated.");
-}
-
-const groupSchema = z.object({ groupId: id.optional() });
-
-export async function assignGroup(
-  studentId: number,
-  registrationId: number,
-  _prev: ActionResult,
-  formData: FormData,
-): Promise<ActionResult> {
-  if (!(await getAuthorizedAdmin())) return NOT_AUTHORIZED;
-  const parsed = parseForm(groupSchema, formData);
-  if (!parsed.ok) return parsed.error;
-  const data = parsed.data;
-
-  const supabase = await createSupabaseServerClient();
-  const registration = id.parse(registrationId);
-
-  if (!data.groupId) {
-    const result = await supabase.from("student_group_assignments").delete().eq("registration_id", registration);
-    if (result.error) return failure(describeDbError(result.error));
-    refresh(studentId);
-    return success("Student removed from their group.");
-  }
-
-  const result = await supabase
-    .from("student_group_assignments")
-    .upsert({ registration_id: registration, group_id: data.groupId }, { onConflict: "registration_id" })
-    .select("registration_id");
-  if (result.error || result.data.length === 0) return failure(describeDbError(result.error));
-  refresh(studentId);
-  revalidatePath(`/admin/groups/${data.groupId}`);
-  return success("Group assignment saved.");
 }
 
 const paymentSettingsSchema = z.object({

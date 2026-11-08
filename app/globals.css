@@ -1,60 +1,77 @@
 @import "tailwindcss";
 
 /*
- * NKC design tokens.
- * Deep green for trust and identity, warm cream surfaces, and a restrained
- * gold accent. Text colors are chosen to meet WCAG AA on cream and white.
+ * Noor Kids Club design tokens, taken from the official logo.
+ *   brand (blue)  - main identity color; logo navy is brand-800
+ *   sun (orange)  - calls to action and highlights; logo orange is sun-500
+ *   leaf (green)  - limited supporting color (success, gentle accents)
+ *   mist          - soft blue-white surfaces; white is the main background
+ * Text colors meet WCAG AA on white. Orange is never used for small text
+ * below sun-700; orange buttons carry navy text.
  */
 @theme {
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-heading), ui-serif, Georgia, serif;
+  --font-display: var(--font-heading), var(--font-body), ui-rounded, system-ui, sans-serif;
   --font-arabic: var(--font-arabic-face), "Noto Naskh Arabic", serif;
 
-  --color-pine-950: #0d261a;
-  --color-pine-900: #143826;
-  --color-pine-800: #1b4a33;
-  --color-pine-700: #235c41;
-  --color-pine-600: #2f7253;
-  --color-pine-200: #c9ded0;
-  --color-pine-100: #e2eee6;
-  --color-pine-50: #f0f6f2;
+  --color-brand-950: #061a35;
+  --color-brand-900: #0a2a52;
+  --color-brand-800: #0e386c;
+  --color-brand-700: #17498a;
+  --color-brand-600: #1f5aa6;
+  --color-brand-500: #2f6fc2;
+  --color-brand-300: #93b6e6;
+  --color-brand-200: #c2d6f1;
+  --color-brand-100: #dfeafa;
+  --color-brand-50: #f0f5fd;
 
-  --color-cream-50: #fffcf5;
-  --color-cream-100: #faf4e6;
-  --color-cream-200: #f1e6cc;
-  --color-cream-300: #e6d5ae;
+  --color-sun-800: #6e400b;
+  --color-sun-700: #8f530d;
+  --color-sun-600: #a65f10;
+  --color-sun-500: #e08a28;
+  --color-sun-400: #eb9e43;
+  --color-sun-300: #f5bd76;
+  --color-sun-200: #fbdcb3;
+  --color-sun-100: #feeedb;
+  --color-sun-50: #fff7ee;
 
-  --color-gold-200: #f0dca8;
-  --color-gold-300: #e5c67c;
-  --color-gold-400: #d3a94a;
-  --color-gold-600: #a07a24;
-  --color-gold-800: #6b5113;
+  --color-leaf-800: #1b5730;
+  --color-leaf-700: #226b3b;
+  --color-leaf-600: #2c8049;
+  --color-leaf-200: #c3e6cd;
+  --color-leaf-100: #e1f3e6;
+  --color-leaf-50: #f1faf3;
 
-  --color-ink-900: #1c231f;
-  --color-ink-700: #37423b;
-  --color-ink-600: #4b574f;
-  --color-ink-500: #5c6860;
-  --color-line: #e3d9c3;
-  --color-line-strong: #cbbd9c;
+  --color-mist-50: #f7faff;
+  --color-mist-100: #eef4fc;
+  --color-mist-200: #dfe9f6;
+  --color-mist-300: #c8d8ec;
 
-  --color-danger-50: #fcefed;
-  --color-danger-200: #f0c2bc;
-  --color-danger-700: #a3302a;
-  --color-danger-800: #82241f;
-  --color-warning-50: #fdf6e1;
-  --color-warning-200: #efd99a;
-  --color-warning-800: #6b4f0b;
-  --color-info-50: #edf3f7;
-  --color-info-200: #c4d7e4;
-  --color-info-800: #234a63;
+  --color-ink-900: #15203a;
+  --color-ink-700: #2f3d58;
+  --color-ink-600: #435069;
+  --color-ink-500: #56637b;
+  --color-line: #dde6f2;
+  --color-line-strong: #bccbe0;
 
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(20 56 38 / 0.06), 0 4px 16px -4px rgb(20 56 38 / 0.08);
+  --color-danger-50: #fdf0ef;
+  --color-danger-200: #f3c4c0;
+  --color-danger-700: #b42318;
+  --color-danger-800: #8f1d14;
+  --color-warning-50: #fff7e8;
+  --color-warning-200: #f6dca6;
+  --color-warning-800: #6e4a05;
+  --color-info-50: #eef4fc;
+  --color-info-200: #c2d6f1;
+  --color-info-800: #17498a;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(14 56 108 / 0.06), 0 6px 20px -8px rgb(14 56 108 / 0.12);
 }
 
 :root {
   color-scheme: light;
-  --focus-ring: var(--color-pine-700);
+  --focus-ring: var(--color-brand-600);
 }
 
 html {
@@ -62,7 +79,7 @@ html {
 }
 
 body {
-  background: var(--color-cream-50);
+  background: #ffffff;
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -86,19 +103,19 @@ p {
   border-radius: 0.375rem;
 }
 
-/* Sections on deep green use a gold focus ring for contrast. */
+/* Sections on deep blue use an orange focus ring for contrast. */
 .on-dark {
-  --focus-ring: var(--color-gold-300);
+  --focus-ring: var(--color-sun-300);
 }
 
 ::selection {
-  background: var(--color-gold-200);
+  background: var(--color-sun-200);
   color: var(--color-ink-900);
 }
 
-/* Subtle geometric pattern used behind hero sections. */
-.pattern-girih {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23e5c67c' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M28 4l7 17 17 7-17 7-7 17-7-17-17-7 17-7z'/%3E%3Cpath d='M28 14l4 10 10 4-10 4-4 10-4-10-10-4 10-4z'/%3E%3C/g%3E%3C/svg%3E");
+/* Faint eight-point star pattern (a common Islamic geometric motif). */
+.pattern-stars {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%231f5aa6' stroke-opacity='0.08' stroke-width='1.2'%3E%3Crect x='22' y='22' width='20' height='20'/%3E%3Crect x='22' y='22' width='20' height='20' transform='rotate(45 32 32)'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 @media (prefers-reduced-motion: reduce) {

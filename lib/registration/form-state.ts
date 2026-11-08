@@ -1,5 +1,5 @@
-import { acknowledgments, type AcknowledgmentId } from "@/lib/config/school";
-import type { ArabicLevel, Grade, Relationship } from "./options";
+import { acknowledgments, type AcknowledgmentId } from "@/lib/config/program";
+import type { Gender, Grade, QuranAbility, Relationship } from "./options";
 import { issuesToFieldErrors, registrationSchema, type RegistrationInput } from "./schema";
 
 /**
@@ -24,10 +24,12 @@ export type StudentFormState = {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  gender: Gender | "";
   grade: Grade | "";
   isReturning: YesNo;
-  arabicLevel: ArabicLevel | "";
   studiedArabicBefore: YesNo;
+  quranAbility: QuranAbility | "";
+  quranNotes: string;
   specialConsiderations: string;
 };
 
@@ -53,10 +55,12 @@ export const emptyStudent = (key: string, lastName = ""): StudentFormState => ({
   firstName: "",
   lastName,
   dateOfBirth: "",
+  gender: "",
   grade: "",
   isReturning: "",
-  arabicLevel: "",
   studiedArabicBefore: "",
+  quranAbility: "",
+  quranNotes: "",
   specialConsiderations: "",
 });
 
@@ -107,10 +111,12 @@ export function toRegistrationInput(state: RegistrationFormState): RegistrationI
       firstName: student.firstName,
       lastName: student.lastName,
       dateOfBirth: student.dateOfBirth,
+      gender: blankToUndefined(student.gender) as Gender,
       grade: blankToUndefined(student.grade) as Grade,
       isReturning: yesNoToBoolean(student.isReturning) as boolean,
-      arabicLevel: blankToUndefined(student.arabicLevel) as ArabicLevel,
       studiedArabicBefore: yesNoToBoolean(student.studiedArabicBefore) as boolean,
+      quranAbility: blankToUndefined(student.quranAbility) as QuranAbility,
+      quranNotes: student.quranNotes,
       specialConsiderations: student.specialConsiderations,
     })),
     acknowledgments: state.acknowledgments as RegistrationInput["acknowledgments"],
@@ -118,22 +124,23 @@ export function toRegistrationInput(state: RegistrationFormState): RegistrationI
 }
 
 export const REGISTRATION_STEPS = [
-  { id: "family", title: "Family", description: "Parent or guardian contact details" },
-  { id: "students", title: "Students", description: "Who you are registering" },
-  { id: "arabic", title: "Arabic background", description: "Each student's experience with Arabic" },
-  { id: "care", title: "Care & emergency", description: "Special considerations and emergency contact" },
-  { id: "enrollment", title: "Enrollment", description: "Grade and returning status" },
-  { id: "consent", title: "Acknowledgments", description: "Please review and confirm" },
-  { id: "review", title: "Review", description: "Check everything before submitting" },
+  { id: "family", title: "Family", description: "Contact details for the parents or guardians." },
+  { id: "children", title: "Children", description: "Tell us about each child you're registering." },
+  {
+    id: "background",
+    title: "Learning Background",
+    description: "Your child's experience with Arabic and the Quran helps us place them. The program decides final Quran levels and teachers.",
+  },
+  { id: "additional", title: "Additional Information", description: "Care needs, an emergency contact and a few confirmations." },
+  { id: "review", title: "Review", description: "Please check everything before you submit." },
 ] as const;
 
 export type RegistrationStepId = (typeof REGISTRATION_STEPS)[number]["id"];
 
-const STUDENT_FIELDS_BY_STEP: Partial<Record<RegistrationStepId, readonly string[]>> = {
-  students: ["firstName", "lastName", "dateOfBirth"],
-  arabic: ["arabicLevel", "studiedArabicBefore"],
-  care: ["specialConsiderations"],
-  enrollment: ["grade", "isReturning"],
+const STUDENT_FIELDS_BY_STEP: Record<"children" | "background" | "additional", readonly string[]> = {
+  children: ["firstName", "lastName", "dateOfBirth", "gender", "grade", "isReturning"],
+  background: ["studiedArabicBefore", "quranAbility", "quranNotes"],
+  additional: ["specialConsiderations"],
 };
 
 /** Whether a field path (e.g. "students.1.grade") belongs to the given step. */
@@ -142,21 +149,16 @@ export function fieldBelongsToStep(path: string, step: RegistrationStepId): bool
   switch (step) {
     case "family":
       return root === "primaryGuardian" || root === "secondaryGuardian";
-    case "care":
+    case "children":
+      return root === "students" && (index === undefined || STUDENT_FIELDS_BY_STEP.children.includes(field));
+    case "background":
+      return root === "students" && index !== undefined && STUDENT_FIELDS_BY_STEP.background.includes(field);
+    case "additional":
       return (
         root === "emergencyContact" ||
-        (root === "students" && index !== undefined && STUDENT_FIELDS_BY_STEP.care!.includes(field))
+        root === "acknowledgments" ||
+        (root === "students" && index !== undefined && STUDENT_FIELDS_BY_STEP.additional.includes(field))
       );
-    case "students":
-      return (
-        root === "students" &&
-        (index === undefined || STUDENT_FIELDS_BY_STEP.students!.includes(field))
-      );
-    case "arabic":
-    case "enrollment":
-      return root === "students" && index !== undefined && STUDENT_FIELDS_BY_STEP[step]!.includes(field);
-    case "consent":
-      return root === "acknowledgments";
     case "review":
       return true;
   }
